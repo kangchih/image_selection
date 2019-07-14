@@ -1,0 +1,38 @@
+worker:
+    build: .
+    environment:
+        - ENV=dev
+        - TYPE=is
+        - SECRET_FILE=./config/dev_is
+
+    volumes:
+      - ".:/app"
+#    links:
+#        - rabbitmq
+#        - mysql
+#
+#rabbitmq:
+#    image: rabbitmq:3-management
+#    ports:
+#        - 5672:5672
+#        - 15672:15672
+#
+#mysql:
+#    image: mysql:5.7
+#    environment:
+#        - MYSQL_ROOT_PASSWORD=user_data_im
+#        - MYSQL_USER=root
+#    ports:
+#        - 3306:3306
+#    volumes:
+#        - /tmp/mysql:/var/lib/mysql
+
+
+#image_selection:
+#    build: .
+#    environment:
+#        - ENV=dev
+#        - TYPE=image_selection
+#        - SECRET_FILE=./config/dev_is
+#    volumes:
+#        - ".:/app"

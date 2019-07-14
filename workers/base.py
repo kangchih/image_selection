@@ -1,0 +1,184 @@
+import datetime
+import logging
+import os
+import re
+import subprocess
+from functools import partial
+from pathlib import Path
+import posixpath
+from .helper_func import download_video_from_url, get_video_info
+from utils import timer
+from logging.handlers import TimedRotatingFileHandler
+import cv2
+
+
+class Base:
+
+    def __init__(self, video_download_dir,
+                 console_log_level="DEBUG", log_file=None, file_log_level="INFO",
+                 max_video_height=960, max_video_width=960, max_fps=30.0, crf_start=26, crf_stop=33, crf_step=2,
+                 ffmpeg_preset="slow", ffmpeg_preset_webp="default", log_interval=5, log_backup_count=20):
+        """Lang Dynamic Bitrate Optimizer Base Class
+
+        See also:
+        CRF: https://trac.ffmpeg.org/wiki/Encode/H.264
+        VMAF: https://github.com/Netflix/vmaf
+
+
+        :param str video_download_dir: local path for temporarily storing videos
+        :param str log_file: file path of the error log file
+        :param int max_video_height: maximum value of the output height
+        :param int max_video_width: maximum value of the output width
+        :param float max_fps: maximum value of the output fps
+        :param str console_log_level: [ERROR|WARNING|INFO|DEBUG]
+        :param str file_log_level: [ERROR|INFO]
+        :param int crf_start: starting crf of image_selection testing
+        :param int crf_stop: stopping crf of image_selection testing
+        :param int crf_step: crf step of image_selection testing
+        :param str ffmpeg_preset: [veryslow|slower|slow|default] ffmpeg preset for image_selection testing
+        :param str ffmpeg_preset_webp: [photo|picture|drawing|icon|default] ffmpeg preset for webp testing
+        """
+        # log folder under /app. Ex: /app/log/logfile
+        self.log_path = Path('./log')
+        self.log_path.mkdir(parents=True, exist_ok=True)
+        self.logger = logging.getLogger(self.__class__.__name__)
+        self.logger.setLevel(console_log_level)
+        self.logger.debug(f"[Base][init] Console log level: {console_log_level}, File log level: {file_log_level}")
+
+        log_handler = TimedRotatingFileHandler(posixpath.join(self.log_path, log_file),
+                                               when="m",
+                                               interval=log_interval,
+                                               backupCount=log_backup_count)
+        log_handler.setLevel(file_log_level)
+        formatter = logging.Formatter('%(message)s')
+        log_handler.setFormatter(formatter)
+        self.logger.addHandler(log_handler)
+        self.video_download_path = Path(video_download_dir)
+        self.video_download_path.mkdir(parents=True, exist_ok=True)
+        self.max_video_height = max_video_height
+        self.max_video_width = max_video_width
+        self.max_fps = max_fps
+        self.download_video_from_url = partial(download_video_from_url, logger=self.logger)
+
+        # self.minify_raw_video = partial(minify_raw_video, logger=self.logger)
+        self.get_video_info = partial(get_video_info, logger=self.logger)
+
+
+        # CRFparameters
+        if crf_start > crf_stop:
+            raise ValueError(f"[Base][init] crf_start should be <= crf_stop ({crf_start}, {crf_stop})")
+        self.crf_start = crf_start
+        self.crf_stop = crf_stop
+        if crf_step < 1:
+            raise ValueError(f"[Base][init] crf_step should be >= 1 ({crf_step})")
+        self.crf_step = crf_step
+
+        # Don't use faster preset
+        valid_presets = ["veryslow", "slower", "slow"]
+        if ffmpeg_preset not in valid_presets:
+            raise ValueError(f"[Base][init] ffmpeg_preset should be one of {valid_presets} ({ffmpeg_preset})")
+        self.ffmpeg_preset = ffmpeg_preset
+        self.ffmpeg_preset_webp = ffmpeg_preset_webp
+
+
+    def error_msg(self, id, error_msg, func_name, service_name='webp'):
+        err_log = {
+            "error_info": {
+                "recording_id": id,
+                "func_name": func_name,
+                "service_name": service_name,
+                "error_msg": error_msg
+            }
+
+        }
+        return err_log
+
+    # @timer
+    # def face_detect(self, image_files):
+    #     is_face_detected = False
+    #     self.logger.debug(f"[face_detect] image_files:{image_files}")
+    #
+    #     for image_file in image_files:
+    #         self.logger.debug(f"[face_detect] image_file:{image_file}")
+    #         try:
+    #             image = face_recognition.load_image_file(image_file)
+    #             face_locations = face_recognition.face_locations(image)
+    #             self.logger.debug(f"[face_detect] face_locations:{face_locations}")
+    #             if (len(face_locations) > 0):
+    #                 self.logger.debug(f"[face_detect] face detected in image_file:{image_file}")
+    #                 is_face_detected = True
+    #                 break
+    #         except FileNotFoundError as e:
+    #             self.logger.debug(f"[face_detect] image_file:{image_file} load image error:{e}")
+    #             continue
+    #     self.logger.debug(f"is_face_detected:{is_face_detected}")
+    #     return is_face_detected
+
+    @timer
+    def shot_detect(self, image_files):
+        is_face_detected = False
+        self.logger.debug(f"[shot_detect] image_files:{image_files}")
+
+        for image_file in image_files:
+            self.logger.debug(f"[shot_detect] image_file:{image_file}")
+            try:
+                image = cv2.imread(image_file)
+                t = type(image)
+                self.logger.debug(f"[shot_detect] type:{t}")
+                shape = image.shape
+                self.logger.debug(f"[shot_detect] shape:{shape}")
+                # if (len(face_locations) > 0):
+                #     self.logger.debug(f"[face_detect] face detected in image_file:{image_file}")
+                #     is_face_detected = True
+                #     break
+            except FileNotFoundError as e:
+                self.logger.debug(f"[face_detect] image_file:{image_file} load image error:{e}")
+                continue
+        self.logger.debug(f"is_face_detected:{is_face_detected}")
+        return is_face_detected
+
+
+    """
+    while(1):
+    #获取每一帧
+    ret,frame = cap.read()
+    #转换到HSV
+    hsv = cv2.cvtColor(frame,cv2.COLOR_BGR2HSV)
+    #设定蓝色的阀值
+    lower_blue = np.array([110,50,50])
+    upper_blue = np.array([130,255,255])
+    #根据阀值构建掩模
+    mask = cv2.inRange(hsv,lower_blue,upper_blue)
+    #对原图和掩模进行位运算
+    res = cv2.bitwise_and(frame,frame,mask=mask)
+    #显示图像
+    cv2.imshow('frame',frame)
+    cv2.imshow('mask',mask)
+    cv2.imshow('res',res)
+    k = cv2.waitKey(5)&0xFF
+    if k == 27:
+        break
+    #关闭窗口
+    cv2.destroyAllWindows()
+    
+    """
+
+    @timer
+    def process_mp4_to_jpg(self, video_id, mp4_file, run_path, start, end, file_log):
+        result = []
+        """"
+        Example path:
+        video_cache/12345678/frame0015.jpg
+        """
+        self.logger.debug(f"[process_mp4_to_jpg][{video_id}] mp4_file={mp4_file}, run_path={run_path}")
+        # output_file = mp4_file.replace(f'{recording_id}.mp4', output)
+        cmd = f'ffmpeg -y -i {mp4_file} -loglevel panic -ss {start} -t {end} -vf fps=1 {run_path}/frame%04d.jpg'
+        self.logger.debug(f"[process_mp4_to_jpg] Process {mp4_file} with command= {cmd}")
+        res = subprocess.call(cmd, shell=True)
+        file_log["process"]["mp4_to_jpg_result"] = {"cmd": cmd, "result": res}
+        self.logger.debug(f"[process_mp4_to_jpg] res = {res}")
+        for file in os.listdir(run_path):
+            if file.startswith("frame"):
+                self.logger.debug(f"[process_mp4_to_jpg] {os.path.join(run_path, file)}")
+                result.append(os.path.join(run_path, file))
+        return result, file_log
