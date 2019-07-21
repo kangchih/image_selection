@@ -10,13 +10,13 @@ from .helper_func import download_video_from_url, get_video_info
 from utils import timer
 from logging.handlers import TimedRotatingFileHandler
 import cv2
-
+import face_recognition
 
 class Base:
 
-    def __init__(self, video_download_dir,
+    def __init__(self, video_download_dir, video_start=0.1, video_end=0.12,
                  console_log_level="DEBUG", log_file=None, file_log_level="INFO",
-                 max_video_height=960, max_video_width=960, max_fps=30.0, crf_start=26, crf_stop=33, crf_step=2,
+                 max_video_height=960, max_video_width=960,
                  ffmpeg_preset="slow", ffmpeg_preset_webp="default", log_interval=5, log_backup_count=20):
         """Lang Dynamic Bitrate Optimizer Base Class
 
@@ -29,7 +29,7 @@ class Base:
         :param str log_file: file path of the error log file
         :param int max_video_height: maximum value of the output height
         :param int max_video_width: maximum value of the output width
-        :param float max_fps: maximum value of the output fps
+        # :param float max_fps: maximum value of the output fps
         :param str console_log_level: [ERROR|WARNING|INFO|DEBUG]
         :param str file_log_level: [ERROR|INFO]
         :param int crf_start: starting crf of image_selection testing
@@ -57,21 +57,23 @@ class Base:
         self.video_download_path.mkdir(parents=True, exist_ok=True)
         self.max_video_height = max_video_height
         self.max_video_width = max_video_width
-        self.max_fps = max_fps
+        # self.max_fps = max_fps
         self.download_video_from_url = partial(download_video_from_url, logger=self.logger)
 
         # self.minify_raw_video = partial(minify_raw_video, logger=self.logger)
         self.get_video_info = partial(get_video_info, logger=self.logger)
 
+        self.video_start = video_start
+        self.video_end = video_end
 
         # CRFparameters
-        if crf_start > crf_stop:
-            raise ValueError(f"[Base][init] crf_start should be <= crf_stop ({crf_start}, {crf_stop})")
-        self.crf_start = crf_start
-        self.crf_stop = crf_stop
-        if crf_step < 1:
-            raise ValueError(f"[Base][init] crf_step should be >= 1 ({crf_step})")
-        self.crf_step = crf_step
+        # if crf_start > crf_stop:
+        #     raise ValueError(f"[Base][init] crf_start should be <= crf_stop ({crf_start}, {crf_stop})")
+        # self.crf_start = crf_start
+        # self.crf_stop = crf_stop
+        # if crf_step < 1:
+        #     raise ValueError(f"[Base][init] crf_step should be >= 1 ({crf_step})")
+        # self.crf_step = crf_step
 
         # Don't use faster preset
         valid_presets = ["veryslow", "slower", "slow"]
@@ -93,40 +95,69 @@ class Base:
         }
         return err_log
 
-    # @timer
-    # def face_detect(self, image_files):
-    #     is_face_detected = False
-    #     self.logger.debug(f"[face_detect] image_files:{image_files}")
-    #
-    #     for image_file in image_files:
-    #         self.logger.debug(f"[face_detect] image_file:{image_file}")
-    #         try:
-    #             image = face_recognition.load_image_file(image_file)
-    #             face_locations = face_recognition.face_locations(image)
-    #             self.logger.debug(f"[face_detect] face_locations:{face_locations}")
-    #             if (len(face_locations) > 0):
-    #                 self.logger.debug(f"[face_detect] face detected in image_file:{image_file}")
-    #                 is_face_detected = True
-    #                 break
-    #         except FileNotFoundError as e:
-    #             self.logger.debug(f"[face_detect] image_file:{image_file} load image error:{e}")
-    #             continue
-    #     self.logger.debug(f"is_face_detected:{is_face_detected}")
-    #     return is_face_detected
+    @timer
+    def face_detect(self, image_files):
+        is_face_detected = False
+        self.logger.debug(f"[face_detect] image_files:{image_files}")
+
+        for image_file in image_files:
+            self.logger.debug(f"[face_detect] image_file:{image_file}")
+            try:
+                image = face_recognition.load_image_file(image_file)
+                face_locations = face_recognition.face_locations(image)
+                self.logger.debug(f"[face_detect] face_locations:{face_locations}")
+                if (len(face_locations) > 0):
+                    self.logger.debug(f"[face_detect] face detected in image_file:{image_file}")
+                    is_face_detected = True
+                    break
+            except FileNotFoundError as e:
+                self.logger.debug(f"[face_detect] image_file:{image_file} load image error:{e}")
+                continue
+        self.logger.debug(f"is_face_detected:{is_face_detected}")
+        return is_face_detected
 
     @timer
     def shot_detect(self, image_files):
         is_face_detected = False
-        self.logger.debug(f"[shot_detect] image_files:{image_files}")
+        # self.logger.debug(f"[shot_detect] image_files:{image_files}")
 
         for image_file in image_files:
             self.logger.debug(f"[shot_detect] image_file:{image_file}")
+            channel = None
+            height = None
+            width = None
             try:
                 image = cv2.imread(image_file)
-                t = type(image)
-                self.logger.debug(f"[shot_detect] type:{t}")
-                shape = image.shape
-                self.logger.debug(f"[shot_detect] shape:{shape}")
+                # t = type(image)
+                # self.logger.debug(f"[shot_detect] type:{t}")
+                if (channel is not None):
+                    height, width, channel = image.shape
+
+                    self.logger.debug(f"[shot_detect] height:{height}")
+                    self.logger.debug(f"[shot_detect] width:{width}")
+                    self.logger.debug(f"[shot_detect] channel:{channel}")
+
+                hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+                self.logger.debug(f"[shot_detect] hsv:{hsv}")
+                self.logger.debug(f"[shot_detect] len(hsv):{len(hsv)}")
+
+                for h in hsv:
+                    print(f"h={h}")
+                    print(f"len(h)={len(h)}")
+                    # len(h)=1920
+                    # h=[[  0 255 182]
+                    #  [  0 255 182]
+                    #  [  0 255 182]
+                    #  ...
+                    #  [ 75 160 107]
+                    #  [ 75 160 107]
+                    #  [ 75 160 107]]
+                    for n in h:
+                        print(f"n={n}")
+                        print(f"len(n)={len(n)}")
+                        # n=[116 186 239]
+                        # len(h)=1920
+
                 # if (len(face_locations) > 0):
                 #     self.logger.debug(f"[face_detect] face detected in image_file:{image_file}")
                 #     is_face_detected = True
@@ -164,15 +195,15 @@ class Base:
     """
 
     @timer
-    def process_mp4_to_jpg(self, video_id, mp4_file, run_path, start, end, file_log):
+    def process_mp4_to_jpg(self, video_id, mp4_file, run_path, start, duration, file_log):
         result = []
         """"
         Example path:
         video_cache/12345678/frame0015.jpg
         """
-        self.logger.debug(f"[process_mp4_to_jpg][{video_id}] mp4_file={mp4_file}, run_path={run_path}")
+        self.logger.debug(f"[process_mp4_to_jpg][{video_id}] mp4_file={mp4_file}, run_path={run_path}, duration={duration}")
         # output_file = mp4_file.replace(f'{recording_id}.mp4', output)
-        cmd = f'ffmpeg -y -i {mp4_file} -loglevel panic -ss {start} -t {end} -vf fps=1 {run_path}/frame%04d.jpg'
+        cmd = f'ffmpeg -y -i {mp4_file} -loglevel panic -ss {start} -t {duration} -vf fps=1 {run_path}/frame%04d.jpg'
         self.logger.debug(f"[process_mp4_to_jpg] Process {mp4_file} with command= {cmd}")
         res = subprocess.call(cmd, shell=True)
         file_log["process"]["mp4_to_jpg_result"] = {"cmd": cmd, "result": res}

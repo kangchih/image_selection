@@ -8,28 +8,25 @@ from utils import send_err_email
 
 class ImageSelectionWorker(Base):
 
-    def __init__(self, video_download_dir, console_log_level="DEBUG",
-                 file_log_level="INFO", log_file=None, s3_download_bucket=None, s3_download_key_prefix=None,
-                 max_video_height=960, max_video_width=960, max_fps=30, crf_start=26, crf_stop=33, crf_step=2,
-                 static_vframes=1, dynamic_vframes=9, lossless=1, jpg_w_size='1334', jpg_h_size='750',
+    def __init__(self, video_download_dir, video_start, video_end, console_log_level="DEBUG",
+                 file_log_level="INFO", log_file=None,
+                 max_video_height=960, max_video_width=960,
                   ffmpeg_preset='slow', ffmpeg_preset_webp='default', log_interval=5, log_backup_count=20,
                  clean_folder=True, smart_download='False'):
 
         self.clean_folder = clean_folder
         self.smart_download = smart_download
-        super().__init__(video_download_dir=video_download_dir, console_log_level=console_log_level, log_file=log_file,
+        super().__init__(video_download_dir=video_download_dir, video_start=video_start, video_end=video_end, console_log_level=console_log_level, log_file=log_file,
                          file_log_level=file_log_level, max_video_height=max_video_height,
-                         max_video_width=max_video_width, max_fps=max_fps, crf_start=crf_start, crf_stop=crf_stop,
-                         crf_step=crf_step, ffmpeg_preset=ffmpeg_preset, ffmpeg_preset_webp=ffmpeg_preset_webp,
+                         max_video_width=max_video_width, ffmpeg_preset=ffmpeg_preset, ffmpeg_preset_webp=ffmpeg_preset_webp,
                          log_interval=log_interval, log_backup_count=log_backup_count)
 
-        self.static_vframes = static_vframes
-        self.dynamic_vframes = dynamic_vframes
-        self.lossless = lossless
-        self.jpg_w_size = jpg_w_size
-        self.jpg_h_size = jpg_h_size
 
 
+
+        # success = self.run(video_id="12345678", file_log=file_log)
+        # self.logger.debug(f"success={success}")
+    def run(self):
         file_log = {
             "is_info": {
                 "type": "is_log"
@@ -64,19 +61,30 @@ class ImageSelectionWorker(Base):
             # TODO: Check log
             self.logger.info(json.dumps(file_log))
 
-            # Process mp4 to jpgs for face detect
-            (jpgs, file_log), td = self.process_mp4_to_jpg(recording_id=video_id, mp4_file=mp4_file, run_path=run_path, start=0, end=0, file_log=file_log)
-            file_log["process"]["process_mp4_to_jpg_cmd_result"] = {"td": td, "number_of_jpgs": len(jpgs)}
-
-            face_detected, td = self.face_detect(image_files=jpgs)
-            file_log["process"]["face_detect"] = {"face_detected": face_detected, "td": td}
-            self.logger.debug(f"[process_video][{video_id}] face_detected:{face_detected}, jpgs:{jpgs}")
-            # minify raw mp4 before compression if required
             video_info = self.get_video_info(mp4_file, dimensions=True, fps=True)
             self.logger.debug(f"[process_video][{video_id}] Video info: {video_info}")
             width, height, fps, duration = video_info["width"], video_info["height"], video_info["r_frame_rate"], \
-                                 video_info["duration"]
+                                           video_info["duration"]
             file_log["process"]["video_info"] = {"width": width, "height": height, "fps": fps}
+
+            self.logger.debug(f"[process_video][{video_id}] width:{width}, height:{height}, fps:{fps}, duration:{duration}")
+
+
+            # Process mp4 to jpgs for face detect
+
+            # (jpgs, file_log), td = self.process_mp4_to_jpg(video_id=video_id, mp4_file=mp4_file, run_path=run_path,
+            #                                                start=int(float(video_info['duration'])*self.video_start),
+            #                                                duration=int(float(video_info['duration'])*self.video_end),
+            #                                                file_log=file_log)
+            # file_log["process"]["process_mp4_to_jpg_cmd_result"] = {"td": td, "number_of_jpgs": len(jpgs)}
+
+            # face_detected, td = self.face_detect(image_files=jpgs)
+            # file_log["process"]["face_detect"] = {"face_detected": face_detected, "td": td}
+            # self.logger.debug(f"[process_video][{video_id}] face_detected:{face_detected}, jpgs:{jpgs}")
+            # minify raw mp4 before compression if required
+            self.shot_detect(["video_cache/12345678/frame0136.jpg"])
+            # self.shot_detect(jpgs)
+
             minify_ops = {}
             # check dimensions
             if width <= height and self.max_video_height < height:
@@ -85,8 +93,8 @@ class ImageSelectionWorker(Base):
             elif height <= width and self.max_video_width < width:
                 minify_ops["dimensions"] = f"{self.max_video_width}:-2"
             # check fps
-            if self.max_fps < fps:
-                minify_ops["fps"] = self.max_fps
+            # if self.max_fps < fps:
+            #     minify_ops["fps"] = self.max_fps
             # TODO: Run crf 18 for android video from original cam
             """ffmpeg -i 288265560523836677.mp4 -c:v libx264 -preset veryslow -crf 18 -c:a copy 288265560523836677.18.mp4"""
             # if minify_ops:
