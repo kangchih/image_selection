@@ -4,6 +4,7 @@ import datetime
 import time
 import json
 import shutil
+import numpy as np
 from utils import send_err_email
 
 class ImageSelectionWorker(Base):
@@ -69,29 +70,58 @@ class ImageSelectionWorker(Base):
 
             self.logger.debug(f"[process_video][{video_id}] width:{width}, height:{height}, fps:{fps}, duration:{duration}")
 
+            frames, td = self.getHsvInFrames(mp4_file=mp4_file,
+                                             start_time=int(float(video_info['duration']) * self.video_start),
+                                             end_time=int(float(video_info['duration'])*self.video_end))
+
+            print(f"len(frames)={len(frames)} ,td={td}")
+
+            dis = {}
+
+            def getDistance(hsv1, hsv2):
+                # print(f"[getDistance]")
+                res=np.sqrt(np.sum(np.square(hsv1-hsv2)))/(1080*1920)
+                print(f"res={res}")
+                return res
+
+            sec = int(float(video_info['duration']) * self.video_start)
+            sec_end = int(float(video_info['duration'])*self.video_end)
+            while(sec < sec_end):
+                dis[sec] = getDistance(frames[sec], frames[sec+1])
+                print(f"dis[{sec}]={dis[sec]}")
+                sec += 1
+            print(f"len(dis)={len(dis)}")
+            print(f"sec={sec}")
+
+            sorted_dis = sorted(dis.items(), key=lambda kv: kv[1], reverse=True)
+
+            print(f"sorted_dis={sorted_dis}")
 
             # Process mp4 to jpgs for face detect
+            rank = 1
+            for sec, dis in sorted_dis:
+                print(f"sec={sec}, dis={dis}")
+                (jpg, file_log), td = self.process_mp4_to_jpg(video_id=video_id, mp4_file=mp4_file, run_path=run_path,
+                                                              start=sec, rank=rank, file_log=file_log)
+                print(f"[{sec}][{dis}][{rank}] jpg={jpg}")
+                rank += 1
 
-            # (jpgs, file_log), td = self.process_mp4_to_jpg(video_id=video_id, mp4_file=mp4_file, run_path=run_path,
-            #                                                start=int(float(video_info['duration'])*self.video_start),
-            #                                                duration=int(float(video_info['duration'])*self.video_end),
-            #                                                file_log=file_log)
             # file_log["process"]["process_mp4_to_jpg_cmd_result"] = {"td": td, "number_of_jpgs": len(jpgs)}
 
             # face_detected, td = self.face_detect(image_files=jpgs)
             # file_log["process"]["face_detect"] = {"face_detected": face_detected, "td": td}
             # self.logger.debug(f"[process_video][{video_id}] face_detected:{face_detected}, jpgs:{jpgs}")
             # minify raw mp4 before compression if required
-            self.shot_detect(["video_cache/12345678/frame0136.jpg"])
+            # self.shot_detect(["video_cache/12345678/frame0136.jpg"])
             # self.shot_detect(jpgs)
 
-            minify_ops = {}
-            # check dimensions
-            if width <= height and self.max_video_height < height:
-                # -2 see also: https://stackoverflow.com/questions/20847674/ffmpeg-libx264-height-not-divisible-by-2
-                minify_ops["dimensions"] = f"-2:{self.max_video_height}"
-            elif height <= width and self.max_video_width < width:
-                minify_ops["dimensions"] = f"{self.max_video_width}:-2"
+            # minify_ops = {}
+            # # check dimensions
+            # if width <= height and self.max_video_height < height:
+            #     # -2 see also: https://stackoverflow.com/questions/20847674/ffmpeg-libx264-height-not-divisible-by-2
+            #     minify_ops["dimensions"] = f"-2:{self.max_video_height}"
+            # elif height <= width and self.max_video_width < width:
+            #     minify_ops["dimensions"] = f"{self.max_video_width}:-2"
             # check fps
             # if self.max_fps < fps:
             #     minify_ops["fps"] = self.max_fps

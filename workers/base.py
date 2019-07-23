@@ -11,6 +11,7 @@ from utils import timer
 from logging.handlers import TimedRotatingFileHandler
 import cv2
 import face_recognition
+import time
 
 class Base:
 
@@ -141,6 +142,8 @@ class Base:
                 self.logger.debug(f"[shot_detect] hsv:{hsv}")
                 self.logger.debug(f"[shot_detect] len(hsv):{len(hsv)}")
 
+                #op1=np.sqrt(np.sum(np.square(vector1-vector2)))
+
                 for h in hsv:
                     print(f"h={h}")
                     print(f"len(h)={len(h)}")
@@ -195,21 +198,145 @@ class Base:
     """
 
     @timer
-    def process_mp4_to_jpg(self, video_id, mp4_file, run_path, start, duration, file_log):
-        result = []
+    def process_mp4_to_jpg(self, video_id, mp4_file, run_path, start, rank, file_log):
         """"
         Example path:
-        video_cache/12345678/frame0015.jpg
+        video_cache/12345678/frame15.jpg
         """
-        self.logger.debug(f"[process_mp4_to_jpg][{video_id}] mp4_file={mp4_file}, run_path={run_path}, duration={duration}")
+        self.logger.debug(f"[process_mp4_to_jpg][{video_id}] mp4_file={mp4_file}, run_path={run_path}")
         # output_file = mp4_file.replace(f'{recording_id}.mp4', output)
-        cmd = f'ffmpeg -y -i {mp4_file} -loglevel panic -ss {start} -t {duration} -vf fps=1 {run_path}/frame%04d.jpg'
+        cmd = f'ffmpeg -y -i {mp4_file} -loglevel panic -ss {start} -vf fps=1 {run_path}/frame{start}-{rank}.jpg'
         self.logger.debug(f"[process_mp4_to_jpg] Process {mp4_file} with command= {cmd}")
         res = subprocess.call(cmd, shell=True)
         file_log["process"]["mp4_to_jpg_result"] = {"cmd": cmd, "result": res}
         self.logger.debug(f"[process_mp4_to_jpg] res = {res}")
-        for file in os.listdir(run_path):
-            if file.startswith("frame"):
-                self.logger.debug(f"[process_mp4_to_jpg] {os.path.join(run_path, file)}")
-                result.append(os.path.join(run_path, file))
-        return result, file_log
+        # for file in os.listdir(run_path):
+        #     if file.startswith("frame"):
+        #         self.logger.debug(f"[process_mp4_to_jpg] {os.path.join(run_path, file)}")
+        #         result.append(os.path.join(run_path, file))
+        # return result, file_log
+        return f"{run_path}/frame{start}-{rank}.jpg", file_log
+
+    # @timer
+    # def test(self, mp4_file):
+    #     # Start default camera
+    #     video = cv2.VideoCapture(mp4_file)
+    #
+    #     # Find OpenCV version
+    #     (major_ver, minor_ver, subminor_ver) = (cv2.__version__).split('.')
+    #
+    #     # With webcam get(CV_CAP_PROP_FPS) does not work.
+    #     # Let's see for ourselves.
+    #
+    #     if int(major_ver) < 3:
+    #         fps = video.get(cv2.cv.CV_CAP_PROP_FPS)
+    #         print(f"Frames per second using video.get(cv2.cv.CV_CAP_PROP_FPS): {0}".format(fps))
+    #     else:
+    #         fps = video.get(cv2.CAP_PROP_FPS)
+    #         print(f"Frames per second using video.get(cv2.CAP_PROP_FPS) : {0}".format(fps))
+    #
+    #     # Number of frames to capture
+    #     num_frames = 120;
+    #
+    #     print(f"Capturing {0} frames".format(num_frames))
+    #
+    #     # Start time
+    #     start = time.time()
+    #
+    #     # Grab a few frames
+    #     for i in xrange(0, num_frames):
+    #         ret, frame = video.read()
+    #
+    #     # End time
+    #     end = time.time()
+    #
+    #     # Time elapsed
+    #     seconds = end - start
+    #     print
+    #     "Time taken : {0} seconds".format(seconds)
+    #
+    #     # Calculate frames per second
+    #     fps = num_frames / seconds;
+    #     print
+    #     "Estimated frames per second : {0}".format(fps);
+    #
+    #     # Release video
+    #     video.release()
+
+
+    @timer
+    def getHsvInFrames(self, mp4_file, start_time, end_time):
+        vidcap = cv2.VideoCapture(mp4_file)
+
+        def getFrame(sec):
+            vidcap.set(cv2.CAP_PROP_POS_MSEC, sec * 1000)
+            hasFrames, image = vidcap.read()
+            print(f"hasFrames={hasFrames}")
+            # print(f"image={image}")
+            if hasFrames:
+                # cv2.imwrite("frame " + str(sec) + " sec.jpg", image)  # save frame as JPG file
+                hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+
+            # height, width, channel = image.shape
+            # self.logger.debug(f"[shot_detect] height:{height}")
+            # self.logger.debug(f"[shot_detect] width:{width}")
+            # self.logger.debug(f"[shot_detect] channel:{channel}")
+
+            return hasFrames, image, hsv
+
+            # op1=np.sqrt(np.sum(np.square(vector1-vector2)))
+
+            # for h in hsv:
+            #     print(f"h={h}")
+            #     print(f"len(h)={len(h)}")
+            #     # len(h)=1920
+            #     # h=[[  0 255 182]
+            #     #  [  0 255 182]
+            #     #  [  0 255 182]
+            #     #  ...
+            #     #  [ 75 160 107]
+            #     #  [ 75 160 107]
+            #     #  [ 75 160 107]]
+            #     for n in h:
+            #         print(f"n={n}")
+            #         print(f"len(n)={len(n)}")
+            #         # n=[116 186 239]
+            #         # len(h)=1920
+        frames = {}
+        sec = start_time
+        frameRate = 1
+        success = True
+        while success and sec <= end_time:
+            print(f"sec={sec}")
+            success, image, hsv = getFrame(sec)
+            if (success):
+                frames[sec] = hsv
+            sec = sec + frameRate
+            sec = round(sec, 2)
+
+        print(f"len(frames)={len(frames)}")
+        print(f"frames[start_time]={frames[start_time]}")
+        print(f"frames[end_time]={frames[end_time]}")
+        # Release video
+        vidcap.release()
+
+        return frames
+
+    @timer
+    def test2(self):
+        vidcap = cv2.VideoCapture('Wildlife.mp4')
+
+        def getFrame(sec):
+            vidcap.set(cv2.CAP_PROP_POS_MSEC, sec * 1000)
+            hasFrames, image = vidcap.read()
+            if hasFrames:
+                cv2.imwrite("frame " + str(sec) + " sec.jpg", image)  # save frame as JPG file
+            return hasFrames
+
+        sec = 0
+        frameRate = 0.5
+        success = getFrame(sec)
+        while success:
+            sec = sec + frameRate
+            sec = round(sec, 2)
+            success = getFrame(sec)
