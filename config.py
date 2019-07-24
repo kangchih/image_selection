@@ -30,7 +30,7 @@ def load_config(file_log={}):
             "max_video_height": int(conf.get("max_video_height", 1280)),
             "max_video_width": int(conf.get("max_video_width", 1280)),
             "video_start": float(conf.get("video_start", 0.1)),
-            "video_end": float(conf.get("video_end", 0.12)),
+            "video_end": float(conf.get("video_end", 0.9)),
             # "crf_stop": int(conf.get("crf_stop", 33)),
             # "crf_step": int(conf.get("crf_step", 2)),
             "ffmpeg_preset": conf.get("ffmpeg_preset", "veryslow"),

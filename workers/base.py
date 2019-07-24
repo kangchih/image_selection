@@ -15,7 +15,7 @@ import time
 
 class Base:
 
-    def __init__(self, video_download_dir, video_start=0.1, video_end=0.12,
+    def __init__(self, video_download_dir, video_start=0.1, video_end=0.9,
                  console_log_level="DEBUG", log_file=None, file_log_level="INFO",
                  max_video_height=960, max_video_width=960,
                  ffmpeg_preset="slow", ffmpeg_preset_webp="default", log_interval=5, log_backup_count=20):
