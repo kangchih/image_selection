@@ -12,6 +12,9 @@ from logging.handlers import TimedRotatingFileHandler
 import cv2
 import face_recognition
 import time
+import matplotlib.pyplot as plt
+import dlib
+from PIL import Image
 
 class Base:
 
@@ -82,6 +85,9 @@ class Base:
             raise ValueError(f"[Base][init] ffmpeg_preset should be one of {valid_presets} ({ffmpeg_preset})")
         self.ffmpeg_preset = ffmpeg_preset
         self.ffmpeg_preset_webp = ffmpeg_preset_webp
+        # self.haar_cascade_face = cv2.CascadeClassifier('./classifier/haarcascade_frontalface_default.xml')
+        self.haar_cascade_face = cv2.CascadeClassifier('./classifier/haarcascade_frontalface_alt.xml')
+
 
 
     def error_msg(self, id, error_msg, func_name, service_name='webp'):
@@ -197,25 +203,59 @@ class Base:
     
     """
 
+    # @timer
+    # def process_mp4_to_jpg(self, video_id, mp4_file, run_path, start, rank, file_log):
+    #     """"
+    #     Example path:
+    #     video_cache/12345678/frame15.jpg
+    #     """
+    #     self.logger.debug(f"[process_mp4_to_jpg][{video_id}] mp4_file={mp4_file}, run_path={run_path}")
+    #     # output_file = mp4_file.replace(f'{recording_id}.mp4', output)
+    #     cmd = f'ffmpeg -y -i {mp4_file} -loglevel panic -ss {start} -vf fps=1 {run_path}/frame{start}-{rank}.jpg'
+    #     self.logger.debug(f"[process_mp4_to_jpg] Process {mp4_file} with command= {cmd}")
+    #     res = subprocess.call(cmd, shell=True)
+    #     # res = 0
+    #     file_log["process"]["mp4_to_jpg_result"] = {"cmd": cmd, "result": res}
+    #     self.logger.debug(f"[process_mp4_to_jpg] res = {res}")
+    #     # for file in os.listdir(run_path):
+    #     #     if file.startswith("frame"):
+    #     #         self.logger.debug(f"[process_mp4_to_jpg] {os.path.join(run_path, file)}")
+    #     #         result.append(os.path.join(run_path, file))
+    #     # return result, file_log
+    #     return f"{run_path}/frame{start}-{rank}.jpg", file_log
+
     @timer
-    def process_mp4_to_jpg(self, video_id, mp4_file, run_path, start, rank, file_log):
+    def process_mp4_to_jpg(self, video_id, frames, sec, rank, run_path, file_log):
         """"
         Example path:
         video_cache/12345678/frame15.jpg
         """
-        self.logger.debug(f"[process_mp4_to_jpg][{video_id}] mp4_file={mp4_file}, run_path={run_path}")
+        self.logger.debug(f"[process_mp4_to_jpg][{video_id}] sec={sec}")
+        self.logger.debug(f"[process_mp4_to_jpg][{video_id}] frames[sec]={frames[sec]}")
+        image = frames[sec][0]
+        self.logger.debug(f"[process_mp4_to_jpg][{video_id}] image={image}")
+
+        self.logger.debug(f"[process_mp4_to_jpg][{video_id}] 222222")
+
+        # image_tmp = image.resize((320, 180), Image.ANTIALIAS)
+        # self.logger.debug(f"[process_mp4_to_jpg][{video_id}] 333333333")
+        cv2.imwrite(f"{run_path}/frame{sec}-{rank}.jpg", image)
+        # image.save(f"{run_path}/frame{sec}-{rank}.jpg")
+        self.logger.debug(f"[process_mp4_to_jpg][{video_id}] 44444444")
+
         # output_file = mp4_file.replace(f'{recording_id}.mp4', output)
-        cmd = f'ffmpeg -y -i {mp4_file} -loglevel panic -ss {start} -vf fps=1 {run_path}/frame{start}-{rank}.jpg'
-        self.logger.debug(f"[process_mp4_to_jpg] Process {mp4_file} with command= {cmd}")
-        res = subprocess.call(cmd, shell=True)
-        file_log["process"]["mp4_to_jpg_result"] = {"cmd": cmd, "result": res}
-        self.logger.debug(f"[process_mp4_to_jpg] res = {res}")
+        # cmd = f'ffmpeg -y -i {mp4_file} -loglevel panic -ss {start} -vf fps=1 {run_path}/frame{start}-{rank}.jpg'
+        # self.logger.debug(f"[process_mp4_to_jpg] Process {mp4_file} with command= {cmd}")
+        # res = subprocess.call(cmd, shell=True)
+        # res = 0
+        # file_log["process"]["mp4_to_jpg_result"] = {"cmd": cmd, "result": res}
+        # self.logger.debug(f"[process_mp4_to_jpg] res = {res}")
         # for file in os.listdir(run_path):
         #     if file.startswith("frame"):
         #         self.logger.debug(f"[process_mp4_to_jpg] {os.path.join(run_path, file)}")
         #         result.append(os.path.join(run_path, file))
         # return result, file_log
-        return f"{run_path}/frame{start}-{rank}.jpg", file_log
+        return f"{run_path}/frame{sec}-{rank}.jpg", file_log
 
     # @timer
     # def test(self, mp4_file):
@@ -262,6 +302,90 @@ class Base:
     #
     #     # Release video
     #     video.release()
+    # @timer
+    # def detect_faces(self, cascade, image, scaleFactor=1.3):
+    #     # create a copy of the image to prevent any changes to the original one.
+    #     image_copy = image.copy()
+    #
+    #     # convert the test image to gray scale as opencv face detector expects gray images
+    #     gray_image = cv2.cvtColor(image_copy, cv2.COLOR_BGR2GRAY)
+    #
+    #     # Applying the haar classifier to detect faces
+    #     faces_rect = cascade.detectMultiScale(gray_image, scaleFactor=scaleFactor, minNeighbors=6, minSize=(50, 50),
+    #                                           flags=cv2.CASCADE_SCALE_IMAGE)
+    #
+    #     for (x, y, w, h) in faces_rect:
+    #         cv2.rectangle(image_copy, (x, y), (x + w, y + h), (0, 255, 0), 15)
+    #
+    #     self.logger.debug(f"Faces found: {len(faces_rect)}")
+    #
+    #     return image_copy
+
+    # @timer
+    # def detect_faces(self, cascade, image, scaleFactor=1.3):
+    #     # create a copy of the image to prevent any changes to the original one.
+    #     image_copy = image.copy()
+    #
+    #     # convert the test image to gray scale as opencv face detector expects gray images
+    #     # gray_image = cv2.cvtColor(image_copy, cv2.COLOR_BGR2GRAY)
+    #     dnnFaceDetector = dlib.cnn_face_detection_model_v1("./classifier/mmod_human_face_detector.dat")
+    #     faceRects = dnnFaceDetector(image, 0)
+    #     self.logger.debug(f"Faces found: {len(faceRects)}")
+    #     for faceRect in faceRects:
+    #         # x1 = faceRect.rect.left()
+    #         # y1 = faceRect.rect.top()
+    #         # x2 = faceRect.rect.right()
+    #         # y2 = faceRect.rect.bottom()
+    #         x = faceRect.rect.left()
+    #         y = faceRect.rect.top()
+    #         w = faceRect.rect.right() - x
+    #         h = faceRect.rect.bottom() - y
+    #
+    #         cv2.rectangle(image_copy, (x, y), (x + w, y + h), (0, 255, 0), 15)
+    #
+    #     # Applying the haar classifier to detect faces
+    #     # faces_rect = cascade.detectMultiScale(gray_image, scaleFactor=scaleFactor, minNeighbors=6, minSize=(50, 50),
+    #     #                                       flags=cv2.CASCADE_SCALE_IMAGE)
+    #     #
+    #     # for (x, y, w, h) in faces_rect:
+    #     #     cv2.rectangle(image_copy, (x, y), (x + w, y + h), (0, 255, 0), 15)
+    #
+    #     return image_copy
+
+    @timer
+    def detect_faces(self, cascade, image, scaleFactor=1.3):
+        # create a copy of the image to prevent any changes to the original one.
+        image_copy = image.copy()
+
+        # convert the test image to gray scale as opencv face detector expects gray images
+        # gray_image = cv2.cvtColor(image_copy, cv2.COLOR_BGR2GRAY)
+
+        # image = face_recognition.load_image_file(image)
+
+        face_locations = face_recognition.face_locations(image_copy)
+        self.logger.debug(f"[face_detect] number of faces: {len(face_locations)}")
+
+        #A list of tuples of found face locations in css (top, right, bottom, left) order
+
+        for faceRect in face_locations:
+            self.logger.debug(f"[face_detect] faceRect:{faceRect}")
+
+            # x1 = faceRect.rect.left()
+            # y1 = faceRect.rect.top()
+            # x2 = faceRect.rect.right()
+            # y2 = faceRect.rect.bottom()
+            x = faceRect[3]
+            y = faceRect[0]
+            w = faceRect[1] - x
+            h = faceRect[2] - y
+            cv2.rectangle(image_copy, (x, y), (x + w, y + h), (0, 255, 0), 15)
+
+        # for (x, y, w, h) in faces_rect:
+        #     cv2.rectangle(image_copy, (x, y), (x + w, y + h), (0, 255, 0), 15)
+
+        return image_copy, len(face_locations), face_locations
+
+
 
 
     @timer
@@ -273,16 +397,33 @@ class Base:
             hasFrames, image = vidcap.read()
             print(f"hasFrames={hasFrames}")
             # print(f"image={image}")
+
+
             if hasFrames:
                 # cv2.imwrite("frame " + str(sec) + " sec.jpg", image)  # save frame as JPG file
                 hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+
+                # gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+                # faces_rects = haar_cascade_face.detectMultiScale(gray_image, scaleFactor=1.2, minNeighbors=5)
+                # for (x, y, w, h) in faces_rects:
+                #     cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                #
+                # # Let us print the no. of faces found
+                # print(f"Faces found: {len(faces_rects)}")
+                (img, faceNum, faceLoc), td = self.detect_faces(self.haar_cascade_face, image)
+                self.logger.debug(f"[getHsvInFrames] td={td}")
+                # for test
+                # plt.imshow(img)
+                # plt.show()
+
 
             # height, width, channel = image.shape
             # self.logger.debug(f"[shot_detect] height:{height}")
             # self.logger.debug(f"[shot_detect] width:{width}")
             # self.logger.debug(f"[shot_detect] channel:{channel}")
 
-            return hasFrames, image, hsv
+            return hasFrames, image, hsv, faceNum, faceLoc
 
             # op1=np.sqrt(np.sum(np.square(vector1-vector2)))
 
@@ -308,9 +449,9 @@ class Base:
         success = True
         while success and sec <= end_time:
             print(f"sec={sec}")
-            success, image, hsv = getFrame(sec)
+            success, image, hsv, faceNum, faceLoc = getFrame(sec)
             if (success):
-                frames[sec] = hsv
+                frames[sec] = (image, hsv, faceNum, faceLoc)
             sec = sec + frameRate
             sec = round(sec, 2)
 

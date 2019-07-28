@@ -35,7 +35,7 @@ class ImageSelectionWorker(Base):
             "time_start": str(datetime.datetime.utcnow()),
             "process": dict()
         }
-        success = self.process_video(video_id="12345678", file_log=file_log)
+        success = self.process_video(video_id="123", file_log=file_log)
         self.logger.debug(f"success={success}")
 
 
@@ -70,9 +70,10 @@ class ImageSelectionWorker(Base):
 
             self.logger.debug(f"[process_video][{video_id}] width:{width}, height:{height}, fps:{fps}, duration:{duration}")
 
-            frames, td = self.getHsvInFrames(mp4_file=mp4_file,
-                                             start_time=int(float(video_info['duration']) * self.video_start),
-                                             end_time=int(float(video_info['duration'])*self.video_end))
+            frame_start = int(float(video_info['duration']) * self.video_start)
+            frame_end = int(float(video_info['duration']) * self.video_end)
+
+            frames, td = self.getHsvInFrames(mp4_file=mp4_file, start_time=frame_start, end_time=frame_end)
 
             print(f"len(frames)={len(frames)} ,td={td}")
 
@@ -80,30 +81,59 @@ class ImageSelectionWorker(Base):
 
             def getDistance(hsv1, hsv2):
                 # print(f"[getDistance]")
-                res=np.sqrt(np.sum(np.square(hsv1-hsv2)))/(1080*1920)
-                print(f"res={res}")
+                res = np.sqrt(np.sum(np.square(hsv1-hsv2)))/(1080*1920)
+                self.logger.debug(f"[getDistance] res={res}")
                 return res
 
-            sec = int(float(video_info['duration']) * self.video_start)
-            sec_end = int(float(video_info['duration'])*self.video_end)
+            sec = frame_start
+            sec_end = frame_end
             while(sec < sec_end):
-                dis[sec] = getDistance(frames[sec], frames[sec+1])
-                print(f"dis[{sec}]={dis[sec]}")
+                if (frames[sec][2] > 0):
+                    dis[sec] = getDistance(frames[sec][1], frames[sec+1][1])
+                    self.logger.debug(f"dis[{sec}]={dis[sec]}")
+                else:
+                    self.logger.debug(f"[WARN] NO FACE! frames[sec][2]={frames[sec][2]}")
                 sec += 1
-            print(f"len(dis)={len(dis)}")
-            print(f"sec={sec}")
+
+
+            self.logger.debug(f"len(dis)={len(dis)}")
+            self.logger.debug(f"sec={sec}")
 
             sorted_dis = sorted(dis.items(), key=lambda kv: kv[1], reverse=True)
 
-            print(f"sorted_dis={sorted_dis}")
+            self.logger.debug(f"sorted_dis={sorted_dis}")
+
+            # # Process mp4 to jpgs for face detect
+            # rank = 1
+            # for sec, dis in sorted_dis[:100]:
+            #     self.logger.debug(f"sec={sec}, dis={dis}")
+            #     (jpg, file_log), td = self.process_mp4_to_jpg(video_id=video_id, mp4_file=mp4_file, run_path=run_path,
+            #                                                   start=sec, rank=rank, file_log=file_log)
+            #     self.logger.debug(f"[{sec}][{dis}][{rank}] jpg={jpg}")
+            #     rank += 1
 
             # Process mp4 to jpgs for face detect
             rank = 1
-            for sec, dis in sorted_dis:
-                print(f"sec={sec}, dis={dis}")
-                (jpg, file_log), td = self.process_mp4_to_jpg(video_id=video_id, mp4_file=mp4_file, run_path=run_path,
-                                                              start=sec, rank=rank, file_log=file_log)
-                print(f"[{sec}][{dis}][{rank}] jpg={jpg}")
+            # result = []
+
+            # {k: v for k, v in frames.items() if v[1] < 1}
+
+            # if sec in frames.keys():
+            #     if 'faceNem' in frames[sec].keys():
+            #         if (frames[sec]['faceNum'] > 0):
+            #             result.append()
+            for sec, dis in sorted_dis[:100]:
+                # self.logger.debug(f"sec={sec}, dis={dis}")
+                # if sec in frames.keys():
+                #     if 'faceNem' in frames[sec].keys():
+                #         if (frames[sec]['faceNum'] > 0):
+                #             result.append()
+
+                # (jpg, file_log), td = self.process_mp4_to_jpg(video_id=video_id, mp4_file=mp4_file, run_path=run_path,
+                #                                               start=sec, rank=rank, file_log=file_log)
+                (jpg, file_log), td = self.process_mp4_to_jpg(video_id=video_id, frames=frames, sec=sec, rank=rank,
+                                                              run_path=run_path, file_log=file_log)
+                self.logger.debug(f"[{sec}][{dis}][{rank}] jpg={jpg}, td={td}")
                 rank += 1
 
             # file_log["process"]["process_mp4_to_jpg_cmd_result"] = {"td": td, "number_of_jpgs": len(jpgs)}
@@ -156,12 +186,13 @@ class ImageSelectionWorker(Base):
             file_log["time_stop"] = str(datetime.datetime.utcnow())
             file_log["time_elapsed"] = f"{toc - tic:.3f}"
             self.logger.debug(f"[process_video][{video_id}] finally file_log:{file_log}")
-            self.logger.debug(f"[process_video][{video_id}] success:{success}")
+            self.logger.debug(f"[process_video][{video_id}] success:{success}, total_time={toc-tic:.3f}")
             self.logger.info(json.dumps(file_log))
 
             # cleanup local files
             if run_path is not None:
                 self.logger.debug(f"[process_video][{video_id}]  Clean_folder={self.clean_folder}, Cleanup {run_path}")
-                if (self.clean_folder is 'True'):
+                if (self.clean_folder == 'True'):
+                    self.logger.debug(f"[process_video][{video_id}]  Ready to clean up, Cleanup {run_path}")
                     shutil.rmtree(str(run_path))
             return success
