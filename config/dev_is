@@ -1,4 +1,6 @@
 {
         "video_download_dir":"./video_cache",
-	    "clean_folder": "False"		
+	    "clean_folder": "False",
+	    "video_start": "0.10",
+	    "video_end": "0.90"
 }

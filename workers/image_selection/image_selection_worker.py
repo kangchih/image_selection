@@ -6,6 +6,8 @@ import json
 import shutil
 import numpy as np
 from utils import send_err_email
+from utils import timer
+
 
 class ImageSelectionWorker(Base):
 
@@ -35,11 +37,11 @@ class ImageSelectionWorker(Base):
             "time_start": str(datetime.datetime.utcnow()),
             "process": dict()
         }
-        success = self.process_video(video_id="123", file_log=file_log)
-        self.logger.debug(f"success={success}")
+        success, td = self.process_video(video_id="3", file_log=file_log, animation=False)
+        self.logger.debug(f"success={success}, td={td}")
 
-
-    def process_video(self, video_id, file_log):
+    @timer
+    def process_video(self, video_id, file_log, animation=False):
         run_path = None
         upload_mp4_file = None
         tic = time.time()
@@ -49,13 +51,13 @@ class ImageSelectionWorker(Base):
             # setup run_path
             run_path = self.video_download_path.joinpath(video_id)
             run_path.mkdir(parents=True, exist_ok=True)
-            self.logger.debug(f"[process_video][{video_id}] Run path: {run_path}")
+            self.logger.debug(f"[process_video][{video_id}] Run path: {run_path}, animation: {animation}")
             file_log["process"]["run_path"] = str(run_path)
+            file_log["process"]["animatino"] = animation
 
             # download video
             mp4_file = str(run_path.joinpath(f"{video_id}.mp4"))
             self.logger.debug(f"[process_video][{video_id}] mp4_file={mp4_file}")
-            file_log["process"]["run_path"] = str(run_path)
             file_log["process"]["mp4_file"] = {"mp4_file": mp4_file, "exist": os.path.exists(mp4_file)}
 
 
@@ -75,7 +77,7 @@ class ImageSelectionWorker(Base):
 
             frames, td = self.getHsvInFrames(mp4_file=mp4_file, start_time=frame_start, end_time=frame_end)
 
-            print(f"len(frames)={len(frames)} ,td={td}")
+            self.logger.debug(f"len(frames)={len(frames)} ,td={td}")
 
             dis = {}
 
@@ -88,7 +90,8 @@ class ImageSelectionWorker(Base):
             sec = frame_start
             sec_end = frame_end
             while(sec < sec_end):
-                if (frames[sec][2] > 0):
+                #if faceNum > 0 then get distance
+                if (animation or frames[sec][2] > 0):
                     dis[sec] = getDistance(frames[sec][1], frames[sec+1][1])
                     self.logger.debug(f"dis[{sec}]={dis[sec]}")
                 else:

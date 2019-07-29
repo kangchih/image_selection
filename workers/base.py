@@ -231,17 +231,17 @@ class Base:
         video_cache/12345678/frame15.jpg
         """
         self.logger.debug(f"[process_mp4_to_jpg][{video_id}] sec={sec}")
-        self.logger.debug(f"[process_mp4_to_jpg][{video_id}] frames[sec]={frames[sec]}")
+        # self.logger.debug(f"[process_mp4_to_jpg][{video_id}] frames[sec]={frames[sec]}")
         image = frames[sec][0]
-        self.logger.debug(f"[process_mp4_to_jpg][{video_id}] image={image}")
+        # self.logger.debug(f"[process_mp4_to_jpg][{video_id}] image={image}")
 
-        self.logger.debug(f"[process_mp4_to_jpg][{video_id}] 222222")
+        # self.logger.debug(f"[process_mp4_to_jpg][{video_id}] 222222")
 
         # image_tmp = image.resize((320, 180), Image.ANTIALIAS)
         # self.logger.debug(f"[process_mp4_to_jpg][{video_id}] 333333333")
         cv2.imwrite(f"{run_path}/frame{sec}-{rank}.jpg", image)
         # image.save(f"{run_path}/frame{sec}-{rank}.jpg")
-        self.logger.debug(f"[process_mp4_to_jpg][{video_id}] 44444444")
+        # self.logger.debug(f"[process_mp4_to_jpg][{video_id}] 44444444")
 
         # output_file = mp4_file.replace(f'{recording_id}.mp4', output)
         # cmd = f'ffmpeg -y -i {mp4_file} -loglevel panic -ss {start} -vf fps=1 {run_path}/frame{start}-{rank}.jpg'
@@ -389,15 +389,14 @@ class Base:
 
 
     @timer
-    def getHsvInFrames(self, mp4_file, start_time, end_time):
+    def getHsvInFrames(self, mp4_file, start_time, end_time, animation=False):
         vidcap = cv2.VideoCapture(mp4_file)
 
         def getFrame(sec):
             vidcap.set(cv2.CAP_PROP_POS_MSEC, sec * 1000)
             hasFrames, image = vidcap.read()
-            print(f"hasFrames={hasFrames}")
+            self.logger.debug(f"hasFrames={hasFrames}")
             # print(f"image={image}")
-
 
             if hasFrames:
                 # cv2.imwrite("frame " + str(sec) + " sec.jpg", image)  # save frame as JPG file
@@ -411,8 +410,11 @@ class Base:
                 #
                 # # Let us print the no. of faces found
                 # print(f"Faces found: {len(faces_rects)}")
-                (img, faceNum, faceLoc), td = self.detect_faces(self.haar_cascade_face, image)
-                self.logger.debug(f"[getHsvInFrames] td={td}")
+                faceNum = None
+                faceLoc = None
+                if (not animation):
+                    (img, faceNum, faceLoc), td = self.detect_faces(self.haar_cascade_face, image, animation)
+                    self.logger.debug(f"[getHsvInFrames] td={td}")
                 # for test
                 # plt.imshow(img)
                 # plt.show()
@@ -448,16 +450,16 @@ class Base:
         frameRate = 1
         success = True
         while success and sec <= end_time:
-            print(f"sec={sec}")
+            self.logger.debug(f"sec={sec}")
             success, image, hsv, faceNum, faceLoc = getFrame(sec)
             if (success):
                 frames[sec] = (image, hsv, faceNum, faceLoc)
             sec = sec + frameRate
             sec = round(sec, 2)
 
-        print(f"len(frames)={len(frames)}")
-        print(f"frames[start_time]={frames[start_time]}")
-        print(f"frames[end_time]={frames[end_time]}")
+        self.logger.debug(f"len(frames)={len(frames)}")
+        self.logger.debug(f"frames[start_time]={frames[start_time]}")
+        self.logger.debug(f"frames[end_time]={frames[end_time]}")
         # Release video
         vidcap.release()
 
