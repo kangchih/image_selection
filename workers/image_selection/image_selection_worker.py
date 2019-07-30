@@ -9,9 +9,10 @@ from utils import send_err_email
 from utils import timer
 
 
+
 class ImageSelectionWorker(Base):
 
-    def __init__(self, video_download_dir, video_start, video_end, console_log_level="DEBUG",
+    def __init__(self, video_download_dir, video_start, video_end, animation=0, console_log_level="DEBUG",
                  file_log_level="INFO", log_file=None,
                  max_video_height=960, max_video_width=960,
                   ffmpeg_preset='slow', ffmpeg_preset_webp='default', log_interval=5, log_backup_count=20,
@@ -19,6 +20,7 @@ class ImageSelectionWorker(Base):
 
         self.clean_folder = clean_folder
         self.smart_download = smart_download
+        self.animation = bool(animation)
         super().__init__(video_download_dir=video_download_dir, video_start=video_start, video_end=video_end, console_log_level=console_log_level, log_file=log_file,
                          file_log_level=file_log_level, max_video_height=max_video_height,
                          max_video_width=max_video_width, ffmpeg_preset=ffmpeg_preset, ffmpeg_preset_webp=ffmpeg_preset_webp,
@@ -37,11 +39,11 @@ class ImageSelectionWorker(Base):
             "time_start": str(datetime.datetime.utcnow()),
             "process": dict()
         }
-        success, td = self.process_video(video_id="3", file_log=file_log, animation=False)
+        success, td = self.process_video(video_id="12345678", file_log=file_log)
         self.logger.debug(f"success={success}, td={td}")
 
     @timer
-    def process_video(self, video_id, file_log, animation=False):
+    def process_video(self, video_id, file_log):
         run_path = None
         upload_mp4_file = None
         tic = time.time()
@@ -51,9 +53,9 @@ class ImageSelectionWorker(Base):
             # setup run_path
             run_path = self.video_download_path.joinpath(video_id)
             run_path.mkdir(parents=True, exist_ok=True)
-            self.logger.debug(f"[process_video][{video_id}] Run path: {run_path}, animation: {animation}")
+            self.logger.debug(f"[process_video][{video_id}] Run path: {run_path}, animation: {self.animation}")
             file_log["process"]["run_path"] = str(run_path)
-            file_log["process"]["animatino"] = animation
+            file_log["process"]["animation"] = self.animation
 
             # download video
             mp4_file = str(run_path.joinpath(f"{video_id}.mp4"))
@@ -75,7 +77,8 @@ class ImageSelectionWorker(Base):
             frame_start = int(float(video_info['duration']) * self.video_start)
             frame_end = int(float(video_info['duration']) * self.video_end)
 
-            frames, td = self.getHsvInFrames(mp4_file=mp4_file, start_time=frame_start, end_time=frame_end)
+            frames, td = self.getHsvInFrames(mp4_file=mp4_file, start_time=frame_start, end_time=frame_end,
+                                             animation=self.animation)
 
             self.logger.debug(f"len(frames)={len(frames)} ,td={td}")
 
@@ -91,7 +94,7 @@ class ImageSelectionWorker(Base):
             sec_end = frame_end
             while(sec < sec_end):
                 #if faceNum > 0 then get distance
-                if (animation or frames[sec][2] > 0):
+                if (self.animation or frames[sec][2] > 0):
                     dis[sec] = getDistance(frames[sec][1], frames[sec+1][1])
                     self.logger.debug(f"dis[{sec}]={dis[sec]}")
                 else:

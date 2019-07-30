@@ -239,7 +239,7 @@ class Base:
 
         # image_tmp = image.resize((320, 180), Image.ANTIALIAS)
         # self.logger.debug(f"[process_mp4_to_jpg][{video_id}] 333333333")
-        cv2.imwrite(f"{run_path}/frame{sec}-{rank}.jpg", image)
+        cv2.imwrite(f"{run_path}/frame{rank}-{sec}.jpg", image)
         # image.save(f"{run_path}/frame{sec}-{rank}.jpg")
         # self.logger.debug(f"[process_mp4_to_jpg][{video_id}] 44444444")
 
@@ -353,7 +353,7 @@ class Base:
     #     return image_copy
 
     @timer
-    def detect_faces(self, cascade, image, scaleFactor=1.3):
+    def detect_faces(self, image):
         # create a copy of the image to prevent any changes to the original one.
         image_copy = image.copy()
 
@@ -400,7 +400,10 @@ class Base:
 
             if hasFrames:
                 # cv2.imwrite("frame " + str(sec) + " sec.jpg", image)  # save frame as JPG file
-                hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+                resized_img = cv2.resize(image, (320, 240))
+                # resized_img = cv2.resize(image, (256, 256))
+
+                hsv = cv2.cvtColor(resized_img, cv2.COLOR_BGR2HSV)
 
                 # gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
@@ -413,8 +416,8 @@ class Base:
                 faceNum = None
                 faceLoc = None
                 if (not animation):
-                    (img, faceNum, faceLoc), td = self.detect_faces(self.haar_cascade_face, image, animation)
-                    self.logger.debug(f"[getHsvInFrames] td={td}")
+                    (img, faceNum, faceLoc), td = self.detect_faces(resized_img)
+                    self.logger.debug(f"[getHsvInFrames] faceNum={faceNum}, faceLoc={faceLoc}, td={td}")
                 # for test
                 # plt.imshow(img)
                 # plt.show()
