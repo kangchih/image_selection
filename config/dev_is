@@ -1,7 +1,9 @@
 {
+        "video_id": "123",
         "video_download_dir":"./video_cache",
 	    "clean_folder": "False",
 	    "video_start": "0.10",
 	    "video_end": "0.90",
-	    "animation": 1
+	    "animation": 0,
+	    "output_images": 100
 }

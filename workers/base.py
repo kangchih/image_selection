@@ -20,8 +20,7 @@ class Base:
 
     def __init__(self, video_download_dir, video_start=0.1, video_end=0.9,
                  console_log_level="DEBUG", log_file=None, file_log_level="INFO",
-                 max_video_height=960, max_video_width=960,
-                 ffmpeg_preset="slow", ffmpeg_preset_webp="default", log_interval=5, log_backup_count=20):
+                 log_interval=5, log_backup_count=20):
         """Lang Dynamic Bitrate Optimizer Base Class
 
         See also:
@@ -31,16 +30,9 @@ class Base:
 
         :param str video_download_dir: local path for temporarily storing videos
         :param str log_file: file path of the error log file
-        :param int max_video_height: maximum value of the output height
-        :param int max_video_width: maximum value of the output width
-        # :param float max_fps: maximum value of the output fps
+        :param float max_fps: maximum value of the output fps
         :param str console_log_level: [ERROR|WARNING|INFO|DEBUG]
         :param str file_log_level: [ERROR|INFO]
-        :param int crf_start: starting crf of image_selection testing
-        :param int crf_stop: stopping crf of image_selection testing
-        :param int crf_step: crf step of image_selection testing
-        :param str ffmpeg_preset: [veryslow|slower|slow|default] ffmpeg preset for image_selection testing
-        :param str ffmpeg_preset_webp: [photo|picture|drawing|icon|default] ffmpeg preset for webp testing
         """
         # log folder under /app. Ex: /app/log/logfile
         self.log_path = Path('./log')
@@ -59,34 +51,12 @@ class Base:
         self.logger.addHandler(log_handler)
         self.video_download_path = Path(video_download_dir)
         self.video_download_path.mkdir(parents=True, exist_ok=True)
-        self.max_video_height = max_video_height
-        self.max_video_width = max_video_width
-        # self.max_fps = max_fps
         self.download_video_from_url = partial(download_video_from_url, logger=self.logger)
 
-        # self.minify_raw_video = partial(minify_raw_video, logger=self.logger)
         self.get_video_info = partial(get_video_info, logger=self.logger)
 
         self.video_start = video_start
         self.video_end = video_end
-
-        # CRFparameters
-        # if crf_start > crf_stop:
-        #     raise ValueError(f"[Base][init] crf_start should be <= crf_stop ({crf_start}, {crf_stop})")
-        # self.crf_start = crf_start
-        # self.crf_stop = crf_stop
-        # if crf_step < 1:
-        #     raise ValueError(f"[Base][init] crf_step should be >= 1 ({crf_step})")
-        # self.crf_step = crf_step
-
-        # Don't use faster preset
-        valid_presets = ["veryslow", "slower", "slow"]
-        if ffmpeg_preset not in valid_presets:
-            raise ValueError(f"[Base][init] ffmpeg_preset should be one of {valid_presets} ({ffmpeg_preset})")
-        self.ffmpeg_preset = ffmpeg_preset
-        self.ffmpeg_preset_webp = ffmpeg_preset_webp
-        # self.haar_cascade_face = cv2.CascadeClassifier('./classifier/haarcascade_frontalface_default.xml')
-        self.haar_cascade_face = cv2.CascadeClassifier('./classifier/haarcascade_frontalface_alt.xml')
 
 
 
@@ -102,80 +72,56 @@ class Base:
         }
         return err_log
 
-    @timer
-    def face_detect(self, image_files):
-        is_face_detected = False
-        self.logger.debug(f"[face_detect] image_files:{image_files}")
 
-        for image_file in image_files:
-            self.logger.debug(f"[face_detect] image_file:{image_file}")
-            try:
-                image = face_recognition.load_image_file(image_file)
-                face_locations = face_recognition.face_locations(image)
-                self.logger.debug(f"[face_detect] face_locations:{face_locations}")
-                if (len(face_locations) > 0):
-                    self.logger.debug(f"[face_detect] face detected in image_file:{image_file}")
-                    is_face_detected = True
-                    break
-            except FileNotFoundError as e:
-                self.logger.debug(f"[face_detect] image_file:{image_file} load image error:{e}")
-                continue
-        self.logger.debug(f"is_face_detected:{is_face_detected}")
-        return is_face_detected
-
-    @timer
-    def shot_detect(self, image_files):
-        is_face_detected = False
-        # self.logger.debug(f"[shot_detect] image_files:{image_files}")
-
-        for image_file in image_files:
-            self.logger.debug(f"[shot_detect] image_file:{image_file}")
-            channel = None
-            height = None
-            width = None
-            try:
-                image = cv2.imread(image_file)
-                # t = type(image)
-                # self.logger.debug(f"[shot_detect] type:{t}")
-                if (channel is not None):
-                    height, width, channel = image.shape
-
-                    self.logger.debug(f"[shot_detect] height:{height}")
-                    self.logger.debug(f"[shot_detect] width:{width}")
-                    self.logger.debug(f"[shot_detect] channel:{channel}")
-
-                hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-                self.logger.debug(f"[shot_detect] hsv:{hsv}")
-                self.logger.debug(f"[shot_detect] len(hsv):{len(hsv)}")
-
-                #op1=np.sqrt(np.sum(np.square(vector1-vector2)))
-
-                for h in hsv:
-                    print(f"h={h}")
-                    print(f"len(h)={len(h)}")
-                    # len(h)=1920
-                    # h=[[  0 255 182]
-                    #  [  0 255 182]
-                    #  [  0 255 182]
-                    #  ...
-                    #  [ 75 160 107]
-                    #  [ 75 160 107]
-                    #  [ 75 160 107]]
-                    for n in h:
-                        print(f"n={n}")
-                        print(f"len(n)={len(n)}")
-                        # n=[116 186 239]
-                        # len(h)=1920
-
-                # if (len(face_locations) > 0):
-                #     self.logger.debug(f"[face_detect] face detected in image_file:{image_file}")
-                #     is_face_detected = True
-                #     break
-            except FileNotFoundError as e:
-                self.logger.debug(f"[face_detect] image_file:{image_file} load image error:{e}")
-                continue
-        self.logger.debug(f"is_face_detected:{is_face_detected}")
-        return is_face_detected
+    # @timer
+    # def shot_detect(self, image_files):
+    #     is_face_detected = False
+    #     # self.logger.debug(f"[shot_detect] image_files:{image_files}")
+    #
+    #     for image_file in image_files:
+    #         self.logger.debug(f"[shot_detect] image_file:{image_file}")
+    #         channel = None
+    #         height = None
+    #         width = None
+    #         try:
+    #             image = cv2.imread(image_file)
+    #             # t = type(image)
+    #             # self.logger.debug(f"[shot_detect] type:{t}")
+    #             if (channel is not None):
+    #                 height, width, channel = image.shape
+    #
+    #                 self.logger.debug(f"[shot_detect] height:{height}")
+    #                 self.logger.debug(f"[shot_detect] width:{width}")
+    #                 self.logger.debug(f"[shot_detect] channel:{channel}")
+    #
+    #             hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    #             self.logger.debug(f"[shot_detect] hsv:{hsv}")
+    #             self.logger.debug(f"[shot_detect] len(hsv):{len(hsv)}")
+    #
+    #             #op1=np.sqrt(np.sum(np.square(vector1-vector2)))
+    #
+    #             for h in hsv:
+    #                 print(f"h={h}")
+    #                 print(f"len(h)={len(h)}")
+    #                 # len(h)=1920
+    #                 # h=[[  0 255 182]
+    #                 #  [  0 255 182]
+    #                 #  [  0 255 182]
+    #                 #  ...
+    #                 #  [ 75 160 107]
+    #                 #  [ 75 160 107]
+    #                 #  [ 75 160 107]]
+    #                 for n in h:
+    #                     print(f"n={n}")
+    #                     print(f"len(n)={len(n)}")
+    #                     # n=[116 186 239]
+    #                     # len(h)=1920
+    #
+    #         except FileNotFoundError as e:
+    #             self.logger.debug(f"[face_detect] image_file:{image_file} load image error:{e}")
+    #             continue
+    #     self.logger.debug(f"is_face_detected:{is_face_detected}")
+    #     return is_face_detected
 
 
     """
@@ -203,26 +149,6 @@ class Base:
     
     """
 
-    # @timer
-    # def process_mp4_to_jpg(self, video_id, mp4_file, run_path, start, rank, file_log):
-    #     """"
-    #     Example path:
-    #     video_cache/12345678/frame15.jpg
-    #     """
-    #     self.logger.debug(f"[process_mp4_to_jpg][{video_id}] mp4_file={mp4_file}, run_path={run_path}")
-    #     # output_file = mp4_file.replace(f'{recording_id}.mp4', output)
-    #     cmd = f'ffmpeg -y -i {mp4_file} -loglevel panic -ss {start} -vf fps=1 {run_path}/frame{start}-{rank}.jpg'
-    #     self.logger.debug(f"[process_mp4_to_jpg] Process {mp4_file} with command= {cmd}")
-    #     res = subprocess.call(cmd, shell=True)
-    #     # res = 0
-    #     file_log["process"]["mp4_to_jpg_result"] = {"cmd": cmd, "result": res}
-    #     self.logger.debug(f"[process_mp4_to_jpg] res = {res}")
-    #     # for file in os.listdir(run_path):
-    #     #     if file.startswith("frame"):
-    #     #         self.logger.debug(f"[process_mp4_to_jpg] {os.path.join(run_path, file)}")
-    #     #         result.append(os.path.join(run_path, file))
-    #     # return result, file_log
-    #     return f"{run_path}/frame{start}-{rank}.jpg", file_log
 
     @timer
     def process_mp4_to_jpg(self, video_id, frames, sec, rank, run_path, file_log):
@@ -231,31 +157,127 @@ class Base:
         video_cache/12345678/frame15.jpg
         """
         self.logger.debug(f"[process_mp4_to_jpg][{video_id}] sec={sec}")
-        # self.logger.debug(f"[process_mp4_to_jpg][{video_id}] frames[sec]={frames[sec]}")
         image = frames[sec][0]
         # self.logger.debug(f"[process_mp4_to_jpg][{video_id}] image={image}")
 
-        # self.logger.debug(f"[process_mp4_to_jpg][{video_id}] 222222")
-
-        # image_tmp = image.resize((320, 180), Image.ANTIALIAS)
-        # self.logger.debug(f"[process_mp4_to_jpg][{video_id}] 333333333")
         cv2.imwrite(f"{run_path}/frame{rank}-{sec}.jpg", image)
-        # image.save(f"{run_path}/frame{sec}-{rank}.jpg")
-        # self.logger.debug(f"[process_mp4_to_jpg][{video_id}] 44444444")
 
-        # output_file = mp4_file.replace(f'{recording_id}.mp4', output)
-        # cmd = f'ffmpeg -y -i {mp4_file} -loglevel panic -ss {start} -vf fps=1 {run_path}/frame{start}-{rank}.jpg'
-        # self.logger.debug(f"[process_mp4_to_jpg] Process {mp4_file} with command= {cmd}")
-        # res = subprocess.call(cmd, shell=True)
-        # res = 0
-        # file_log["process"]["mp4_to_jpg_result"] = {"cmd": cmd, "result": res}
-        # self.logger.debug(f"[process_mp4_to_jpg] res = {res}")
-        # for file in os.listdir(run_path):
-        #     if file.startswith("frame"):
-        #         self.logger.debug(f"[process_mp4_to_jpg] {os.path.join(run_path, file)}")
-        #         result.append(os.path.join(run_path, file))
-        # return result, file_log
         return f"{run_path}/frame{sec}-{rank}.jpg", file_log
+
+
+
+    @timer
+    def detect_faces(self, image):
+        # create a copy of the image to prevent any changes to the original one.
+        image_copy = image.copy()
+
+        face_locations = face_recognition.face_locations(image_copy)
+        self.logger.debug(f"[face_detect] number of faces: {len(face_locations)}")
+
+        #A list of tuples of found face locations in css (top, right, bottom, left) order
+
+        for faceRect in face_locations:
+            self.logger.debug(f"[face_detect] faceRect:{faceRect}")
+
+            # x1 = faceRect.rect.left()
+            # y1 = faceRect.rect.top()
+            # x2 = faceRect.rect.right()
+            # y2 = faceRect.rect.bottom()
+            x = faceRect[3]
+            y = faceRect[0]
+            w = faceRect[1] - x
+            h = faceRect[2] - y
+            cv2.rectangle(image_copy, (x, y), (x + w, y + h), (0, 255, 0), 15)
+
+        return image_copy, len(face_locations), face_locations
+
+    @timer
+    def getHsvInFrames(self, mp4_file, start_time, end_time, animation=False):
+        vidcap = cv2.VideoCapture(mp4_file)
+
+        def getFrame(sec):
+            vidcap.set(cv2.CAP_PROP_POS_MSEC, sec * 1000)
+            hasFrames, image = vidcap.read()
+            self.logger.debug(f"hasFrames={hasFrames}")
+
+            if hasFrames:
+                resized_img = cv2.resize(image, (320, 180))
+                # resized_img = cv2.resize(image, (256, 256))
+
+                hsv = cv2.cvtColor(resized_img, cv2.COLOR_BGR2HSV)
+
+                faceNum = None
+                faceLoc = None
+                if (not animation):
+                    (img, faceNum, faceLoc), td = self.detect_faces(resized_img)
+                    self.logger.debug(f"[getHsvInFrames] faceNum={faceNum}, faceLoc={faceLoc}, td={td}")
+                # for test
+                # plt.imshow(img)
+                # plt.show()
+
+            # height, width, channel = image.shape
+            # self.logger.debug(f"[shot_detect] height:{height}, width:{width}, channel:{channel}")
+
+            return hasFrames, image, hsv, faceNum, faceLoc
+
+            # op1=np.sqrt(np.sum(np.square(vector1-vector2)))
+
+            # for h in hsv:
+            #     print(f"h={h}")
+            #     print(f"len(h)={len(h)}")
+            #     # len(h)=1920
+            #     # h=[[  0 255 182]
+            #     #  [  0 255 182]
+            #     #  [  0 255 182]
+            #     #  ...
+            #     #  [ 75 160 107]
+            #     #  [ 75 160 107]
+            #     #  [ 75 160 107]]
+            #     for n in h:
+            #         print(f"n={n}")
+            #         print(f"len(n)={len(n)}")
+            #         # n=[116 186 239]
+            #         # len(h)=1920
+        frames = {}
+        sec = start_time
+        frameRate = 1
+        success = True
+        while success and sec <= end_time:
+            self.logger.debug(f"sec={sec}")
+            success, image, hsv, faceNum, faceLoc = getFrame(sec)
+            if (success):
+                frames[sec] = (image, hsv, faceNum, faceLoc)
+            sec = sec + frameRate
+            sec = round(sec, 2)
+
+        self.logger.debug(f"len(frames)={len(frames)}")
+        self.logger.debug(f"frames[start_time]={frames[start_time]}")
+        self.logger.debug(f"frames[end_time]={frames[end_time]}")
+        # Release video
+        vidcap.release()
+
+        return frames
+
+
+    ## Example of using other face detect library
+    # @timer
+    # def test2(self):
+    #     vidcap = cv2.VideoCapture('Wildlife.mp4')
+    #
+    #     def getFrame(sec):
+    #         vidcap.set(cv2.CAP_PROP_POS_MSEC, sec * 1000)
+    #         hasFrames, image = vidcap.read()
+    #         if hasFrames:
+    #             cv2.imwrite("frame " + str(sec) + " sec.jpg", image)  # save frame as JPG file
+    #         return hasFrames
+    #
+    #     sec = 0
+    #     frameRate = 0.5
+    #     success = getFrame(sec)
+    #     while success:
+    #         sec = sec + frameRate
+    #         sec = round(sec, 2)
+    #         success = getFrame(sec)
 
     # @timer
     # def test(self, mp4_file):
@@ -352,137 +374,47 @@ class Base:
     #
     #     return image_copy
 
-    @timer
-    def detect_faces(self, image):
-        # create a copy of the image to prevent any changes to the original one.
-        image_copy = image.copy()
+    def chunkify(self, img, block_width=4, block_height=4):
+        shape = img.shape
+        x_len = shape[0] // block_width
+        y_len = shape[1] // block_height
+        # print(x_len, y_len)
 
-        # convert the test image to gray scale as opencv face detector expects gray images
-        # gray_image = cv2.cvtColor(image_copy, cv2.COLOR_BGR2GRAY)
+        chunks = []
+        x_indices = [i for i in range(0, shape[0] + 1, block_width)]
+        y_indices = [i for i in range(0, shape[1] + 1, block_height)]
 
-        # image = face_recognition.load_image_file(image)
+        shapes = list(zip(x_indices, y_indices))
 
-        face_locations = face_recognition.face_locations(image_copy)
-        self.logger.debug(f"[face_detect] number of faces: {len(face_locations)}")
+        for i in range(len(shapes)):
+            try:
+                start_x = shapes[i][0]
+                start_y = shapes[i][1]
+                end_x = shapes[i + 1][0]
+                end_y = shapes[i + 1][1]
+                chunks.append(shapes[start_x:end_x][start_y:end_y])
+            except IndexError:
+                self.logger.debug('End of Array')
 
-        #A list of tuples of found face locations in css (top, right, bottom, left) order
-
-        for faceRect in face_locations:
-            self.logger.debug(f"[face_detect] faceRect:{faceRect}")
-
-            # x1 = faceRect.rect.left()
-            # y1 = faceRect.rect.top()
-            # x2 = faceRect.rect.right()
-            # y2 = faceRect.rect.bottom()
-            x = faceRect[3]
-            y = faceRect[0]
-            w = faceRect[1] - x
-            h = faceRect[2] - y
-            cv2.rectangle(image_copy, (x, y), (x + w, y + h), (0, 255, 0), 15)
-
-        # for (x, y, w, h) in faces_rect:
-        #     cv2.rectangle(image_copy, (x, y), (x + w, y + h), (0, 255, 0), 15)
-
-        return image_copy, len(face_locations), face_locations
+        return chunks
 
 
+    """
+        OpenCV Laplace
+        void Laplacian(InputArray src, OutputArray dst, int ddepth, int ksize=1, double scale=1, double delta=0, intborderType=BORDER_DEFAULT)
+        
+        src：輸入圖。
+        dst：輸出圖，和輸入圖有相同的尺寸和通道數。
+        ddepth：輸出圖的深度，假設輸入圖為CV_8U, 支援CV_8U、CV_16S、CV_32F、CV_64F，假設輸入圖為 CV_16U, 支援CV_16U、CV_32F、CV_64F。
+        ksize：核心，預設為1，輸入值必須為正整數。
+    
+    """
+    #TODO Implement Laplacian
 
+    def lapa(self, image, ksize=5):
+        gray_lap = cv2.Laplacian(image, cv2.CV_16S, ksize=ksize)
+        dst = cv2.convertScaleAbs(gray_lap)
 
-    @timer
-    def getHsvInFrames(self, mp4_file, start_time, end_time, animation=False):
-        vidcap = cv2.VideoCapture(mp4_file)
-
-        def getFrame(sec):
-            vidcap.set(cv2.CAP_PROP_POS_MSEC, sec * 1000)
-            hasFrames, image = vidcap.read()
-            self.logger.debug(f"hasFrames={hasFrames}")
-            # print(f"image={image}")
-
-            if hasFrames:
-                # cv2.imwrite("frame " + str(sec) + " sec.jpg", image)  # save frame as JPG file
-                resized_img = cv2.resize(image, (320, 240))
-                # resized_img = cv2.resize(image, (256, 256))
-
-                hsv = cv2.cvtColor(resized_img, cv2.COLOR_BGR2HSV)
-
-                # gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-                # faces_rects = haar_cascade_face.detectMultiScale(gray_image, scaleFactor=1.2, minNeighbors=5)
-                # for (x, y, w, h) in faces_rects:
-                #     cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                #
-                # # Let us print the no. of faces found
-                # print(f"Faces found: {len(faces_rects)}")
-                faceNum = None
-                faceLoc = None
-                if (not animation):
-                    (img, faceNum, faceLoc), td = self.detect_faces(resized_img)
-                    self.logger.debug(f"[getHsvInFrames] faceNum={faceNum}, faceLoc={faceLoc}, td={td}")
-                # for test
-                # plt.imshow(img)
-                # plt.show()
-
-
-            # height, width, channel = image.shape
-            # self.logger.debug(f"[shot_detect] height:{height}")
-            # self.logger.debug(f"[shot_detect] width:{width}")
-            # self.logger.debug(f"[shot_detect] channel:{channel}")
-
-            return hasFrames, image, hsv, faceNum, faceLoc
-
-            # op1=np.sqrt(np.sum(np.square(vector1-vector2)))
-
-            # for h in hsv:
-            #     print(f"h={h}")
-            #     print(f"len(h)={len(h)}")
-            #     # len(h)=1920
-            #     # h=[[  0 255 182]
-            #     #  [  0 255 182]
-            #     #  [  0 255 182]
-            #     #  ...
-            #     #  [ 75 160 107]
-            #     #  [ 75 160 107]
-            #     #  [ 75 160 107]]
-            #     for n in h:
-            #         print(f"n={n}")
-            #         print(f"len(n)={len(n)}")
-            #         # n=[116 186 239]
-            #         # len(h)=1920
-        frames = {}
-        sec = start_time
-        frameRate = 1
-        success = True
-        while success and sec <= end_time:
-            self.logger.debug(f"sec={sec}")
-            success, image, hsv, faceNum, faceLoc = getFrame(sec)
-            if (success):
-                frames[sec] = (image, hsv, faceNum, faceLoc)
-            sec = sec + frameRate
-            sec = round(sec, 2)
-
-        self.logger.debug(f"len(frames)={len(frames)}")
-        self.logger.debug(f"frames[start_time]={frames[start_time]}")
-        self.logger.debug(f"frames[end_time]={frames[end_time]}")
-        # Release video
-        vidcap.release()
-
-        return frames
-
-    @timer
-    def test2(self):
-        vidcap = cv2.VideoCapture('Wildlife.mp4')
-
-        def getFrame(sec):
-            vidcap.set(cv2.CAP_PROP_POS_MSEC, sec * 1000)
-            hasFrames, image = vidcap.read()
-            if hasFrames:
-                cv2.imwrite("frame " + str(sec) + " sec.jpg", image)  # save frame as JPG file
-            return hasFrames
-
-        sec = 0
-        frameRate = 0.5
-        success = getFrame(sec)
-        while success:
-            sec = sec + frameRate
-            sec = round(sec, 2)
-            success = getFrame(sec)
+        cv2.imshow('laplacian', dst)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()

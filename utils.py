@@ -13,25 +13,25 @@ logging.basicConfig()
 logger = logging.getLogger(log_id)
 logger.setLevel(log_level)
 
-def get_dimensions(mp4_path):
-    """
-    Get height and width of a mp4 file
-
-    :param mp4_path: mp4 local path
-    :return: (str) (height, width)
-    """
-    try:
-        logger.info(f"get_dimensions: {mp4_path}")
-        cmd = f"ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 {mp4_path}"
-        dimensions = subprocess.check_output(re.split(r"\s+", cmd)).decode("utf-8").strip()
-        if len(dimensions.split(",")) == 2:
-            return dimensions.split(",")
-        else:
-            logger.error(f"wrong dimension parsed {mp4_path}: {dimensions}")
-            return ""
-    except:
-        logger.error(f"Can'r get dimensions of {mp4_path}.")
-        return ""
+# def get_dimensions(mp4_path):
+#     """
+#     Get height and width of a mp4 file
+#
+#     :param mp4_path: mp4 local path
+#     :return: (str) (height, width)
+#     """
+#     try:
+#         logger.info(f"get_dimensions: {mp4_path}")
+#         cmd = f"ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 {mp4_path}"
+#         dimensions = subprocess.check_output(re.split(r"\s+", cmd)).decode("utf-8").strip()
+#         if len(dimensions.split(",")) == 2:
+#             return dimensions.split(",")
+#         else:
+#             logger.error(f"wrong dimension parsed {mp4_path}: {dimensions}")
+#             return ""
+#     except:
+#         logger.error(f"Can'r get dimensions of {mp4_path}.")
+#         return ""
 
 
 def timer(method):

@@ -19,21 +19,20 @@ def load_config(file_log={}):
     conf = configs_from_file
     worker_configs = {
         "dev-is": {
-            # optional
+            # required
+            "video_id": conf.get("video_id"),
 
+            # optional
             "console_log_level": conf.get("console_log_level", "DEBUG"),
             "file_log_level": conf.get("file_log_level", "INFO"),
             "log_file": conf.get("log_file", 'log'),
             "log_interval": int(conf.get("log_interval", 1)),
             "log_backup_count": int(conf.get("log_backup_count", 20)),
             "video_download_dir": conf.get("video_download_dir", "./video_cache"),
-            "max_video_height": int(conf.get("max_video_height", 1280)),
-            "max_video_width": int(conf.get("max_video_width", 1280)),
             "video_start": float(conf.get("video_start", 0.1)),
             "video_end": float(conf.get("video_end", 0.9)),
             "animation": int(conf.get("animation", 0)),
-            # "crf_step": int(conf.get("crf_step", 2)),
-            "ffmpeg_preset": conf.get("ffmpeg_preset", "veryslow"),
+            "output_images": int(conf.get("output_images", 100)),
             "clean_folder": conf.get("clean_folder", 'True'),
             "smart_download": conf.get("smart_download", 'False')
         },
@@ -72,9 +71,9 @@ def load_config(file_log={}):
             "crf_stop": int(conf.get("crf_stop", 33)),
             "crf_step": int(conf.get("crf_step", 2)),
             "ffmpeg_preset": conf.get("ffmpeg_preset", "veryslow"),
-            "s3_download_bucket": conf.get("s3_download_bucket", 'langlive-video'),
+            "s3_download_bucket": conf.get("s3_download_bucket", 'video'),
             "s3_download_key_prefix": conf.get("s3_download_key_prefix", 'prod/recording'),
-            "s3_upload_bucket": conf.get("s3_upload_bucket", 'langlive-video'),
+            "s3_upload_bucket": conf.get("s3_upload_bucket", 'video'),
             "s3_upload_key_prefix": conf.get("s3_upload_key_prefix", 'prod/recording'),
             "clean_folder": conf.get("clean_folder", 'True'),
             "smart_download": conf.get("smart_download", 'False')
