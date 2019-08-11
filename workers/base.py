@@ -15,6 +15,8 @@ import time
 import matplotlib.pyplot as plt
 import dlib
 from PIL import Image
+import numpy as np
+
 
 class Base:
 
@@ -158,11 +160,14 @@ class Base:
         """
         self.logger.debug(f"[process_mp4_to_jpg][{video_id}] sec={sec}")
         image = frames[sec][0]
+        lp1 = frames[sec][-2]
+        lp2 = frames[sec][-1]
         # self.logger.debug(f"[process_mp4_to_jpg][{video_id}] image={image}")
+        path = f"{run_path}/frame{rank}-{sec}-{lp1}-{lp2}.jpg"
 
-        cv2.imwrite(f"{run_path}/frame{rank}-{sec}.jpg", image)
+        cv2.imwrite(path, image)
 
-        return f"{run_path}/frame{sec}-{rank}.jpg", file_log
+        return path, file_log
 
 
 
@@ -195,7 +200,11 @@ class Base:
     def getHsvInFrames(self, mp4_file, start_time, end_time, animation=False):
         vidcap = cv2.VideoCapture(mp4_file)
 
-        def getFrame(sec):
+        """
+        @:param: sec
+        @:return: hasFrames, image, hsv, faceNum, faceLoc, laplacian
+        """
+        def getFrameInfo(sec):
             vidcap.set(cv2.CAP_PROP_POS_MSEC, sec * 1000)
             hasFrames, image = vidcap.read()
             self.logger.debug(f"hasFrames={hasFrames}")
@@ -205,7 +214,12 @@ class Base:
                 # resized_img = cv2.resize(image, (256, 256))
 
                 hsv = cv2.cvtColor(resized_img, cv2.COLOR_BGR2HSV)
-
+                gray_img = cv2.cvtColor(resized_img, cv2.COLOR_BGR2GRAY)
+                # is_blurred = False
+                (lp1, lp2), td = self.laplacian_filter(gray_img)
+                # if laplacian < 400:
+                #     is_blurred = True
+                print(f"[getFrameInfo] sec={sec}, lp1={lp1}, lp2={lp2}td={td}")
                 faceNum = None
                 faceLoc = None
                 if (not animation):
@@ -218,7 +232,7 @@ class Base:
             # height, width, channel = image.shape
             # self.logger.debug(f"[shot_detect] height:{height}, width:{width}, channel:{channel}")
 
-            return hasFrames, image, hsv, faceNum, faceLoc
+            return hasFrames, image, hsv, faceNum, faceLoc, lp1, lp2
 
             # op1=np.sqrt(np.sum(np.square(vector1-vector2)))
 
@@ -244,15 +258,15 @@ class Base:
         success = True
         while success and sec <= end_time:
             self.logger.debug(f"sec={sec}")
-            success, image, hsv, faceNum, faceLoc = getFrame(sec)
+            success, image, hsv, faceNum, faceLoc, lp1, lp2 = getFrameInfo(sec)
             if (success):
-                frames[sec] = (image, hsv, faceNum, faceLoc)
+                frames[sec] = (image, hsv, faceNum, faceLoc, lp1, lp2)
             sec = sec + frameRate
             sec = round(sec, 2)
 
         self.logger.debug(f"len(frames)={len(frames)}")
-        self.logger.debug(f"frames[start_time]={frames[start_time]}")
-        self.logger.debug(f"frames[end_time]={frames[end_time]}")
+        # self.logger.debug(f"frames[start_time]={frames[start_time]}")
+        # self.logger.debug(f"frames[end_time]={frames[end_time]}")
         # Release video
         vidcap.release()
 
@@ -410,11 +424,83 @@ class Base:
     
     """
     #TODO Implement Laplacian
+    """
+    3.2.1. Sharpness. The sharpness of a frame can be obtained by converting the frame to a grayscale image,
+     convolving the grayscale image with a Laplacian filter, and computing the variance of the filtered image. 
+     This basic method is also applied to measure the strength of the bokeh effect produced by using optics with 
+     shallow depth of field. Typically, this effect is produced to make the background blur and the object of interest 
+     sharp. It improves the attractiveness of an image.
+    More specifically, a frame is first evenly sliced into 5 x 5 blocks, and the sharpness of each block is computed. 
+    Then, the effect of shallow depth of field for the entire frame is measured by 
+    (H1 + H2)-(L1 + L2)
+    """
+    @timer
+    def laplacian(self, image, ksize=1):
+        gray_lap = cv2.Laplacian(image, cv2.CV_64F, ksize=ksize).var()
+        # dst = cv2.convertScaleAbs(gray_lap)
+        # print(f"[laplacian] gray_lap={gray_lap}")
+        # print(f"[laplacian] dst={dst}")
+        # res = np.sum(gray_lap)
+        # print(f"[laplacian] dst={dst}")
 
-    def lapa(self, image, ksize=5):
-        gray_lap = cv2.Laplacian(image, cv2.CV_16S, ksize=ksize)
-        dst = cv2.convertScaleAbs(gray_lap)
+        return int(gray_lap)
 
-        cv2.imshow('laplacian', dst)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        # cv2.imshow('laplacian', dst)
+        # cv2.waitKey(0)
+        # cv2.destroyAllWindows()
+    # @timer
+    # def laplacian_filter(self, image):
+    #     lp, td = self.laplacian(image)
+    #     print(f"lp={lp}, td={td}")
+    #
+    #     if lp < 200:
+    #         print(f"[WARN] sharpness < 200")
+    #     return lp
+
+    @timer
+    def laplacian_filter(self, image, width=320, height=180, blocks=5):
+        lp, td = self.laplacian(image)
+        print(f"[laplacian_filter] lp={lp}, td={td}")
+
+        # 裁切區域的長度與寬度
+        w = int(width / 5)
+        h = int(height / 5)
+        print(f"[laplacian_filter] w={w}, h={h}")
+        # 裁切圖片
+        # crop_img = image[y:y + h, x:x + w]
+        # count = 1
+        sharpness = []
+        for i in range(blocks):
+            # 裁切區域的 x 與 y 座標（左上角）
+            y = h * i
+            for j in range(blocks):
+                x = w * j
+                crop_img = image[y:y + h, x:x + w]
+                lp, td = self.laplacian(crop_img)
+                # print(f"laplacian={lp}, td={td}")
+                sharpness.append(lp)
+                # print(f"i={i} j ={j}, count={count}")
+                # print(f"y={y}: y+h={y+h}")
+                # print(f"x={x}, x+w={x+w}")
+
+                # plt.imshow(crop_img)
+                # plt.show()
+                # count+= 1
+
+        sorted_lp = sorted(sharpness, reverse=True)
+        print(f"sorted_lp={sorted_lp}")
+        h1 = sorted_lp[0]
+        h2 = sorted_lp[1]
+        l1 = sorted_lp[-1]
+        l2 = sorted_lp[-2]
+
+        print(f"h1={h1}, h2={h2}, l1={l1}, l2={l2}")
+        """
+         Where h1 and h2 denote the two highest sharpness values
+         of the blocks, and l1 and l2 denote the two lowest ones.
+        """
+        res = (h1 + h2) - (l1 + l2)
+        print(f"[laplacian_filter] res={res}")
+        if res < 400:
+            print(f"[WARN] sharpness < 400")
+        return lp, res

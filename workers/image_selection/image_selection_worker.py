@@ -77,7 +77,46 @@ class ImageSelectionWorker(Base):
             dis = {}
 
             def getDistance(hsv1, hsv2):
-                res = np.sqrt(np.sum(np.square(hsv1-hsv2)))/(int(width)*int(height))
+
+                # for h in hsv1:
+                #     print(f"h={h}")
+                #     print(f"l_h={len(h)}")
+                #     for n in h:
+                #         print(f"n={n}")
+                #         print(f"l_n={len(n)}")
+                # sum = 0
+                # sum1 = 0
+                # for i in range(180):
+                #     for j in range(320):
+                #         print(f"[{i}][{j}] hsv1[i][j]={hsv1[i][j]}")
+                #         print(f"[{i}][{j}] hsv2[i][j]={hsv2[i][j]}")
+                #         print(f"[{i}][{j}] hsv1[i][j] - hsv2[i][j]={abs(hsv1[i][j] - hsv2[i][j])}")
+                #         print(f"[{i}][{j}] square hsv1[i][j] - hsv2[i][j]={np.square(abs(hsv1[i][j] - hsv2[i][j]))}")
+                #         print(f"[{i}][{j}] sqrt square hsv1[i][j] - hsv2[i][j]={np.sqrt(np.sum(np.square(np.abs(hsv1[i][j] - hsv2[i][j]))))}")
+                #         print(f"[{i}][{j}] (np.abs(x-y))={np.abs(hsv1[i][j]-hsv2[i][j])}")
+                #         print(f"[{i}][{j}] np.sum(np.abs(x-y))={np.sum(np.abs(hsv1[i][j]-hsv2[i][j]))}")
+
+                        # sum += np.sqrt(np.sum(np.square(abs(hsv1[i][j] - hsv2[i][j]))))
+                        # sum1 += np.sum(np.abs(hsv1[i][j]-hsv2[i][j]))
+
+                # print(f"sum={sum}")
+                # print(f"sum1={sum1}")
+                # print(f"sum1/320*180={sum1/(320*180)}")
+                # res = np.sqrt(np.sum(sum))
+                # res = sum/(320*180)
+
+                # Manhattan Distance
+                res = np.sum(np.abs(hsv1 - hsv2))/(320*180)
+                print(f"res={res}")
+                if res < 90 :
+                    print(f"[WARN] res={res} < 90 should be deleted")
+                # print(f"d1/320*180={res/(320*180)}")
+
+                # res = np.sqrt(np.sum(np.square(hsv1-hsv2)))/(int(width)*int(height))
+                # res = np.sqrt(np.sum(np.square(np.array(hsv1)-np.array(hsv2))))/(320*180)
+                # for in
+                    # res = np.sqrt(np.sum(np.square(np.abs(hsv1-hsv2))))/(int(width)*int(height))
+
                 self.logger.debug(f"[getDistance] res={res}")
                 return res
 
