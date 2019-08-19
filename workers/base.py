@@ -215,11 +215,15 @@ class Base:
 
                 hsv = cv2.cvtColor(resized_img, cv2.COLOR_BGR2HSV)
                 gray_img = cv2.cvtColor(resized_img, cv2.COLOR_BGR2GRAY)
+                # plt.imshow(resized_img)
+                # plt.show()
+                # plt.imshow(gray_img)
+                # plt.show()
                 # is_blurred = False
                 (lp1, lp2), td = self.laplacian_filter(gray_img)
                 # if laplacian < 400:
                 #     is_blurred = True
-                print(f"[getFrameInfo] sec={sec}, lp1={lp1}, lp2={lp2}td={td}")
+                print(f"[getFrameInfo] sec={sec}, lp1={lp1}, lp2={lp2}, td={td}")
                 faceNum = None
                 faceLoc = None
                 if (not animation):
@@ -501,6 +505,6 @@ class Base:
         """
         res = (h1 + h2) - (l1 + l2)
         print(f"[laplacian_filter] res={res}")
-        if res < 400:
-            print(f"[WARN] sharpness < 400")
+        if res > 2000:
+            print(f"[WARN] sharpness > 2000")
         return lp, res

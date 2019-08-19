@@ -11,7 +11,7 @@ from utils import timer
 class ImageSelectionWorker(Base):
 
     def __init__(self, video_download_dir, video_id, video_start, video_end, animation=0, output_images=100,
-                 console_log_level="DEBUG",
+                 console_log_level="DEBUG", frame_diff_threshold=90, sharpness_threshold=90, sharpness_diff_threshold=60000,
                  file_log_level="INFO", log_file=None,
                  log_interval=5, log_backup_count=20,
                  clean_folder=True, smart_download='False'):
@@ -21,6 +21,9 @@ class ImageSelectionWorker(Base):
         self.animation = bool(animation)
         self.video_id = video_id
         self.output_images = output_images
+        self.frame_diff_threshold = frame_diff_threshold
+        self.sharpness_threshold = sharpness_threshold
+        self.sharpness_diff_threshold = sharpness_diff_threshold
 
         super().__init__(video_download_dir=video_download_dir, video_start=video_start, video_end=video_end,
                          console_log_level=console_log_level, log_file=log_file,
@@ -108,7 +111,7 @@ class ImageSelectionWorker(Base):
                 # Manhattan Distance
                 res = np.sum(np.abs(hsv1 - hsv2))/(320*180)
                 print(f"res={res}")
-                if res < 90 :
+                if res < self.frame_diff_threshold:
                     print(f"[WARN] res={res} < 90 should be deleted")
                 # print(f"d1/320*180={res/(320*180)}")
 

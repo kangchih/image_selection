@@ -32,6 +32,8 @@ def load_config(file_log={}):
             "video_start": float(conf.get("video_start", 0.1)),
             "video_end": float(conf.get("video_end", 0.9)),
             "animation": int(conf.get("animation", 0)),
+            "hsv_diff_threshold": int(conf.get("hsv_diff_threshold", 90)),
+            "sharpness_threshold": int(conf.get("sharpness_threshold", 90)),
             "output_images": int(conf.get("output_images", 100)),
             "clean_folder": conf.get("clean_folder", 'True'),
             "smart_download": conf.get("smart_download", 'False')

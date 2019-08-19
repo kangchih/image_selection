@@ -1,9 +1,12 @@
 {
-        "video_id": "123",
+        "video_id": "5",
         "video_download_dir":"./video_cache",
 	    "clean_folder": "False",
 	    "video_start": "0.10",
 	    "video_end": "0.90",
 	    "animation": 0,
-	    "output_images": 100
+	    "frame_diff_threshold": 90,
+	    "sharpness_threshold": 90,
+	    "sharpness_diff_threshold": 60000,
+	    "output_images": 400
 }
