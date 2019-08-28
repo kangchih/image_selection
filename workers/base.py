@@ -160,10 +160,13 @@ class Base:
         """
         self.logger.debug(f"[process_mp4_to_jpg][{video_id}] sec={sec}")
         image = frames[sec][0]
-        lp1 = frames[sec][-2]
-        lp2 = frames[sec][-1]
+        lp1 = frames[sec][-5]
+        lp2 = frames[sec][-4]
+        sat = frames[sec][-3]
+        brt = frames[sec][-2]
+        ct = frames[sec][-1]
         # self.logger.debug(f"[process_mp4_to_jpg][{video_id}] image={image}")
-        path = f"{run_path}/frame{rank}-{sec}-{lp1}-{lp2}.jpg"
+        path = f"{run_path}/frame{rank}-{sec}-{lp1}-{lp2}-s{sat}-b{brt}-c{ct}.jpg"
 
         cv2.imwrite(path, image)
 
@@ -207,13 +210,24 @@ class Base:
         def getFrameInfo(sec):
             vidcap.set(cv2.CAP_PROP_POS_MSEC, sec * 1000)
             hasFrames, image = vidcap.read()
-            self.logger.debug(f"hasFrames={hasFrames}")
+            self.logger.debug(f"[getFrameInfo] hasFrames={hasFrames}")
 
             if hasFrames:
                 resized_img = cv2.resize(image, (320, 180))
                 # resized_img = cv2.resize(image, (256, 256))
 
                 hsv = cv2.cvtColor(resized_img, cv2.COLOR_BGR2HSV)
+                brightness = hsv[..., 2].mean()
+                saturation = hsv[..., 1].mean()
+
+                self.logger.debug(f"[getFrameInfo] brightness={brightness}")
+                self.logger.debug(f"[getFrameInfo] saturation={saturation}")
+
+                contrast, td = self.contrast_frame(image=resized_img)
+
+                self.logger.debug(f"[getFrameInfo] contrast={contrast}, td={td}")
+
+
                 gray_img = cv2.cvtColor(resized_img, cv2.COLOR_BGR2GRAY)
                 # plt.imshow(resized_img)
                 # plt.show()
@@ -236,7 +250,7 @@ class Base:
             # height, width, channel = image.shape
             # self.logger.debug(f"[shot_detect] height:{height}, width:{width}, channel:{channel}")
 
-            return hasFrames, image, hsv, faceNum, faceLoc, lp1, lp2
+            return hasFrames, image, hsv, faceNum, faceLoc, lp1, lp2, saturation, brightness, contrast
 
             # op1=np.sqrt(np.sum(np.square(vector1-vector2)))
 
@@ -262,9 +276,9 @@ class Base:
         success = True
         while success and sec <= end_time:
             self.logger.debug(f"sec={sec}")
-            success, image, hsv, faceNum, faceLoc, lp1, lp2 = getFrameInfo(sec)
+            success, image, hsv, faceNum, faceLoc, lp1, lp2, sat, brt, ct = getFrameInfo(sec)
             if (success):
-                frames[sec] = (image, hsv, faceNum, faceLoc, lp1, lp2)
+                frames[sec] = (image, hsv, faceNum, faceLoc, lp1, lp2, sat, brt, ct)
             sec = sec + frameRate
             sec = round(sec, 2)
 
@@ -508,3 +522,47 @@ class Base:
         if res > 2000:
             print(f"[WARN] sharpness > 2000")
         return lp, res
+
+    @timer
+    def contrast_frame(self, image, width=320, height=180, blocks=5):
+        # 裁切區域的長度與寬度
+        w = int(width / 5)
+        h = int(height / 5)
+        print(f"[contrast_frame] w={w}, h={h}")
+        # 裁切圖片
+        # crop_img = image[y:y + h, x:x + w]
+        # count = 1
+        contrast = []
+        for i in range(blocks):
+            # 裁切區域的 x 與 y 座標（左上角）
+            y = h * i
+            for j in range(blocks):
+                x = w * j
+                crop_img = image[y:y + h, x:x + w]
+                hsv = cv2.cvtColor(crop_img, cv2.COLOR_BGR2HSV)
+                brightness = hsv[..., 2].mean()
+                # print(f"laplacian={lp}, td={td}")
+                contrast.append(brightness)
+                # print(f"i={i} j ={j}, count={count}")
+                # print(f"y={y}: y+h={y+h}")
+                # print(f"x={x}, x+w={x+w}")
+
+                # plt.imshow(crop_img)
+                # plt.show()
+                # count+= 1
+
+        sorted_ct = sorted(contrast, reverse=True)
+        print(f"[contrast_frame] sorted_ct={sorted_ct}")
+        Imax = sorted_ct[0]
+        Imin = sorted_ct[-1]
+
+        print(f"[contrast_frame] Imax={Imax}, Imin={Imin}")
+        """
+         Where h1 and h2 denote the two highest sharpness values
+         of the blocks, and l1 and l2 denote the two lowest ones.
+        """
+        res = (Imax - Imin) / (Imax + Imin)
+        print(f"[contrast_frame] res={res}")
+        if res < 0.3:
+            print(f"[WARN][contrast_frame] contrast < 0.3")
+        return res
