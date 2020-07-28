@@ -1,7 +1,5 @@
 import logging
 import os
-import re
-import subprocess
 import time
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -48,7 +46,7 @@ def send_err_email(id):
     try:
         sender = ''
         passwd = ''
-        receivers = ['kangchihkuo@gmail.com']
+        receivers = ['xx@xx.com']
 
         emails = [elem.strip().split(',') for elem in receivers]
         msg = MIMEMultipart()

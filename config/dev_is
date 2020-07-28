@@ -1,12 +1,13 @@
 {
-        "video_id": "5",
+        "video_id": "love_actually",
         "video_download_dir":"./video_cache",
 	    "clean_folder": "False",
 	    "video_start": "0.10",
-	    "video_end": "0.90",
+	    "video_end": "0.20",
 	    "animation": 0,
 	    "frame_diff_threshold": 90,
 	    "sharpness_threshold": 90,
 	    "sharpness_diff_threshold": 60000,
-	    "output_images": 400
+	    "output_images": 5,
+	    "subtitled": "True"
 }

@@ -5,7 +5,6 @@ import time
 import json
 import shutil
 import numpy as np
-from utils import send_err_email
 from utils import timer
 
 class ImageSelectionWorker(Base):

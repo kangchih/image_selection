@@ -1,8 +1,4 @@
-import datetime
 import logging
-import os
-import re
-import subprocess
 from functools import partial
 from pathlib import Path
 import posixpath
@@ -11,11 +7,7 @@ from utils import timer
 from logging.handlers import TimedRotatingFileHandler
 import cv2
 import face_recognition
-import time
-import matplotlib.pyplot as plt
-import dlib
-from PIL import Image
-import numpy as np
+
 
 
 class Base:
@@ -455,6 +447,7 @@ class Base:
     @timer
     def laplacian(self, image, ksize=1):
         gray_lap = cv2.Laplacian(image, cv2.CV_64F, ksize=ksize).var()
+        # gray_lap1 = cv2.Laplacian(image, cv2.CV_64F, ksize=ksize).var()
         # dst = cv2.convertScaleAbs(gray_lap)
         # print(f"[laplacian] gray_lap={gray_lap}")
         # print(f"[laplacian] dst={dst}")
@@ -493,6 +486,7 @@ class Base:
             y = h * i
             for j in range(blocks):
                 x = w * j
+                print(f"[laplacian_filter] {y}:{y+h}, {x}:{x+w}")
                 crop_img = image[y:y + h, x:x + w]
                 lp, td = self.laplacian(crop_img)
                 # print(f"laplacian={lp}, td={td}")
@@ -504,6 +498,8 @@ class Base:
                 # plt.imshow(crop_img)
                 # plt.show()
                 # count+= 1
+        print(f"non-sorted lp={sharpness}")
+        print(f"non-sorted lp last 5={sharpness[-5:]}")
 
         sorted_lp = sorted(sharpness, reverse=True)
         print(f"sorted_lp={sorted_lp}")

@@ -20,7 +20,7 @@ worker:
 #mysql:
 #    image: mysql:5.7
 #    environment:
-#        - MYSQL_ROOT_PASSWORD=user_data_im
+#        - MYSQL_ROOT_PASSWORD=xx
 #        - MYSQL_USER=root
 #    ports:
 #        - 3306:3306
